@@ -1,0 +1,2117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>销售经营总看板</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --background: #f7f8fb;
+      --foreground: #1a1c1f;
+      --card: rgba(255, 255, 255, 0.96);
+      --border: rgba(26, 28, 31, 0.08);
+      --muted: rgba(26, 28, 31, 0.10);
+      --muted-foreground: rgba(26, 28, 31, 0.52);
+      --primary: #339cff;
+      --primary-foreground: #ffffff;
+      --accent: #e5f2ff;
+      --destructive: #e25507;
+      --green: #00a240;
+      --red: #ba2623;
+      --series-1: #339cff;
+      --series-2: #f3883b;
+      --series-3: #5dc977;
+      --series-4: #eb77b1;
+      --series-5: #9b79ec;
+      --series-6: #3ab9b1;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --radius: 14px;
+      --shadow: 0 18px 45px rgba(31, 35, 41, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background:
+        radial-gradient(circle at 16% 0%, rgba(51, 156, 255, 0.14), transparent 32%),
+        radial-gradient(circle at 96% 6%, rgba(243, 136, 59, 0.10), transparent 28%),
+        var(--background);
+      color: var(--foreground);
+      font-family: var(--font);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    h1, h2, h3, p { margin: 0; }
+    h2 { font-size: 20px; font-weight: 650; letter-spacing: -0.02em; }
+    h3 { font-size: 16px; font-weight: 650; }
+
+    #sales-dashboard-master-v5 {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 2px 16px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: var(--primary-foreground);
+      background: linear-gradient(135deg, var(--primary), #6bb7ff);
+      box-shadow: 0 12px 24px rgba(51, 156, 255, 0.24);
+      font-weight: 800;
+    }
+    .brand strong { display: block; font-size: 19px; letter-spacing: -0.02em; }
+    .sub, .text-muted { color: var(--muted-foreground); }
+    .text-small { font-size: 12px; }
+    .viz-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .viz-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted-foreground);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.68);
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 10px;
+      z-index: 20;
+      backdrop-filter: blur(16px);
+    }
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--foreground);
+      padding: 8px 13px;
+      font-weight: 620;
+    }
+    .btn:hover { background: var(--muted); }
+    .btn-primary {
+      background: var(--primary);
+      color: var(--primary-foreground);
+      box-shadow: 0 10px 22px rgba(51, 156, 255, 0.25);
+    }
+    .btn-primary:hover { background: #238ff4; }
+    .page { display: none; padding-top: 14px; }
+    .page.active { display: grid; gap: 14px; }
+    .section, .card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+    .section { padding: 16px; }
+    .section-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+    .viz-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .today-kpis { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .viz-stat {
+      min-height: 104px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      box-shadow: none;
+    }
+    .viz-stat-value {
+      display: block;
+      margin-top: 8px;
+      font-size: 28px;
+      font-weight: 750;
+      letter-spacing: -0.04em;
+    }
+    .two {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .wide-side {
+      display: grid;
+      grid-template-columns: minmax(0, 1.38fr) minmax(280px, 0.62fr);
+      gap: 14px;
+    }
+    .rolling {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: rgba(51, 156, 255, 0.07);
+    }
+    .target-row, .rank-row, .gap-row {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr) 92px;
+      gap: 10px;
+      align-items: center;
+      margin-top: 10px;
+    }
+    .target-row-stacked {
+      display: block;
+      padding: 10px 12px 12px;
+      border-radius: 13px;
+      border-left-width: 4px;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+    }
+    .target-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 2px;
+    }
+    .target-time-progress {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: auto;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(51, 156, 255, 0.10);
+      color: var(--series-1);
+      white-space: nowrap;
+      box-shadow: inset 0 0 0 1px rgba(51, 156, 255, 0.14);
+    }
+    .target-time-progress span {
+      display: inline;
+      color: var(--muted-foreground);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .target-time-progress strong {
+      display: inline;
+      font-size: 16px;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .target-row-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .today-target-badge {
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: rgba(22, 93, 255, 0.10);
+      color: var(--series-1);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .goal-tier-1 .today-target-badge {
+      background: rgba(243, 136, 59, 0.14);
+      color: var(--series-2);
+    }
+    .goal-tier-2 .today-target-badge {
+      background: rgba(51, 156, 255, 0.14);
+      color: var(--series-1);
+    }
+    .goal-tier-3 .today-target-badge {
+      background: rgba(93, 201, 119, 0.16);
+      color: var(--series-3);
+    }
+    .rank { display: grid; gap: 11px; margin-top: 10px; }
+    .rank-row { grid-template-columns: 92px minmax(0, 1fr) 96px; }
+    .rank-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      color: var(--muted-foreground);
+      margin: 3px 0 0 102px;
+      font-size: 12px;
+    }
+    .track, .zero-bar {
+      position: relative;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--muted);
+      overflow: hidden;
+    }
+    .fill, .gap-positive, .gap-negative {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--series-1);
+    }
+    .fill.s2 { background: var(--series-2); }
+    .fill.s3 { background: var(--series-3); }
+    .fill.s4 { background: var(--series-4); }
+    .history-mark {
+      position: absolute;
+      top: -3px;
+      width: 2px;
+      height: 16px;
+      background: rgba(26, 28, 31, 0.45);
+    }
+    .positive { color: var(--green); }
+    .negative { color: var(--red); }
+    .callout {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 13px;
+      background: rgba(51, 156, 255, 0.08);
+      border: 1px solid rgba(51, 156, 255, 0.16);
+    }
+    .callout.warn {
+      background: rgba(243, 136, 59, 0.10);
+      border-color: rgba(243, 136, 59, 0.22);
+    }
+    .donut-wrap {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      margin-top: 10px;
+    }
+    .donut {
+      width: 170px;
+      height: 170px;
+      border-radius: 50%;
+      background: conic-gradient(var(--series-1) 0 25%, var(--series-2) 25% 50%, var(--series-3) 50% 75%, var(--series-4) 75% 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.55), 0 10px 22px rgba(15, 23, 42, 0.08);
+      display: grid;
+      place-items: center;
+    }
+    .donut-center {
+      width: 108px;
+      height: 108px;
+      border-radius: 50%;
+      background: var(--card);
+      display: grid;
+      place-items: center;
+      text-align: center;
+    }
+    .donut-center strong { font-size: 28px; }
+    .donut-note {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+    }
+    .channel-card-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .channel-card {
+      padding: 11px 12px 10px;
+      border-radius: 13px;
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(248,251,255,.92));
+      border: 1px solid rgba(22, 93, 255, 0.10);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
+    }
+    .channel-card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .channel-card-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      font-weight: 600;
+    }
+    .channel-chip {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+      background: var(--chip, var(--series-1));
+      box-shadow: 0 0 0 3px rgba(255,255,255,.72);
+    }
+    .channel-card-main {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: baseline;
+      margin-bottom: 7px;
+    }
+    .channel-card-main strong { font-size: 18px; }
+    .channel-card-main span { color: var(--muted-foreground); font-size: 12px; }
+    .channel-card-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+    }
+    .channel-card-bar i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--chip, var(--series-1));
+    }
+    .channel-flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+    .flow {
+      padding: 12px;
+      border-radius: 13px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.70);
+    }
+    .flow-head { display: flex; justify-content: space-between; gap: 10px; }
+    .flow-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; }
+    .flow-step {
+      padding: 8px;
+      border-radius: 10px;
+      background: rgba(26, 28, 31, 0.04);
+      color: var(--muted-foreground);
+    }
+    .flow-step strong { display: block; color: var(--foreground); font-size: 18px; }
+    .compare-shell { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .compare-pane {
+      padding: 14px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.62);
+    }
+    .compare-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0; }
+    .compare-kpi {
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(26, 28, 31, 0.04);
+      color: var(--muted-foreground);
+    }
+    .compare-kpi strong { display: block; color: var(--foreground); font-size: 20px; }
+    .compare-line { margin-top: 10px; }
+    .compare-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 5px; }
+    .compare-line.is-clickable { cursor: pointer; }
+    .compare-line.is-clickable:hover .compare-head strong { color: var(--series-1); }
+    .review-order-detail {
+      display: none;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px dashed rgba(22, 93, 255, 0.18);
+      background: rgba(22, 93, 255, 0.06);
+    }
+    .compare-line.expanded .review-order-detail { display: block; }
+    .review-order-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      color: var(--muted-foreground);
+      margin-bottom: 6px;
+    }
+    .review-order-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .review-order-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      background: rgba(255, 255, 255, 0.88);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      color: var(--foreground);
+    }
+    .review-order-empty {
+      color: var(--muted-foreground);
+      font-size: 12px;
+    }
+    .zero-bar { height: 8px; background: linear-gradient(90deg, rgba(186,38,35,.12) 0 50%, rgba(0,162,64,.12) 50%); }
+    .gap-positive { margin-left: 50%; background: var(--green); }
+    .gap-negative { margin-left: calc(50% - var(--w, 0%)); background: var(--red); }
+    .goal-tier-1 {
+      border-left: 4px solid var(--series-2);
+      background: rgba(243, 136, 59, 0.06);
+    }
+    .goal-tier-1 strong { color: var(--series-2); }
+    .goal-tier-2 {
+      border-left: 4px solid var(--series-1);
+      background: rgba(51, 156, 255, 0.06);
+    }
+    .goal-tier-2 strong { color: var(--series-1); }
+    .goal-tier-3 {
+      border-left: 4px solid var(--series-3);
+      background: rgba(93, 201, 119, 0.06);
+    }
+    .goal-tier-3 strong { color: var(--series-3); }
+    .stackbar {
+      height: 28px;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--muted);
+    }
+    .stackbar i {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-style: normal;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .live, .seg-a { background: var(--series-1); }
+    .chase, .seg-b { background: var(--series-2); }
+    .seg-c { background: var(--series-3); }
+    .seg-d { background: var(--series-4); }
+    .chart { width: 100%; height: 240px; }
+    .mini-chart { width: 100%; height: 220px; }
+    .line-legend { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted-foreground); margin-top: 8px; }
+    .line-legend i {
+      display: inline-block;
+      width: 18px;
+      height: 3px;
+      margin-right: 5px;
+      vertical-align: middle;
+      border-radius: 999px;
+      background: var(--series-1);
+    }
+    .line-legend .s2 { background: var(--series-2); }
+    .line-legend .s3 { background: var(--series-3); }
+    .line-legend .s4 { background: var(--series-4); }
+    .health-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 10px; }
+    .health {
+      min-height: 92px;
+      padding: 12px;
+      border-radius: 13px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.68);
+    }
+    .health strong { display: block; font-size: 18px; }
+    .health.good { border-color: rgba(0, 162, 64, 0.20); background: rgba(0, 162, 64, 0.06); }
+    .health.bad { border-color: rgba(186, 38, 35, 0.20); background: rgba(186, 38, 35, 0.06); }
+    .timeline { display: grid; gap: 9px; margin-top: 10px; }
+    .time-step {
+      padding: 10px 12px;
+      border-left: 3px solid var(--border);
+      border-radius: 10px;
+      background: rgba(26, 28, 31, 0.04);
+    }
+    .time-step.done { border-color: var(--green); }
+    .time-step.active { border-color: var(--primary); background: rgba(51, 156, 255, 0.08); }
+    .table-responsive { overflow: auto; margin-top: 8px; border-radius: 12px; border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; background: rgba(255, 255, 255, 0.64); }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+    th { color: var(--muted-foreground); font-weight: 650; background: rgba(26, 28, 31, 0.035); }
+    .text-end { text-align: right; }
+    .form-control {
+      width: 100%;
+      min-height: 128px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.72);
+      color: var(--foreground);
+      outline: none;
+    }
+    .action-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    select {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: var(--card);
+      color: var(--foreground);
+      font-weight: 600;
+    }
+    @media (max-width: 1100px) {
+      .viz-grid, .two, .wide-side, .compare-shell, .channel-flow { grid-template-columns: 1fr; }
+      .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .donut-wrap { grid-template-columns: 1fr; }
+      .channel-card-list { grid-template-columns: 1fr; }
+      .tabs { position: static; }
+    }
+    @media (max-width: 680px) {
+      #sales-dashboard-master-v5 { padding: 10px; }
+      .top, .section-head { flex-direction: column; }
+      .viz-grid, .health-grid, .flow-steps { grid-template-columns: 1fr; }
+      .target-row, .rank-row, .gap-row { grid-template-columns: 78px minmax(0, 1fr) 76px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="sales-dashboard-master-v5">
+    <header class="top">
+      <div class="brand">
+        <div class="brand-icon">↗</div>
+        <div>
+          <strong>销售经营总看板</strong>
+          <div class="sub text-small">每日经营 · 周月汇报 · 渠道销售分析 · 实验行动闭环</div>
+        </div>
+      </div>
+      <div class="viz-row">
+        <span class="viz-badge" id="source-badge">本地数据</span>
+        <span class="text-muted text-small" id="data-status">正在读取静态发布数据...</span>
+      </div>
+    </header>
+
+    <nav class="tabs" aria-label="总看板页面">
+      <button class="btn" type="button" data-tab="today">今日预测</button>
+      <button class="btn" type="button" data-tab="review">昨日复盘</button>
+      <button class="btn" type="button" data-tab="weekly">周报</button>
+      <button class="btn btn-primary" type="button" data-tab="monthly">月报</button>
+      <button class="btn" type="button" data-tab="channel">渠道分析</button>
+      <button class="btn" type="button" data-tab="sales">销售排名</button>
+      <button class="btn" type="button" data-tab="actions">实验与行动</button>
+    </nav>
+
+    <section class="page" data-page="today" aria-label="今日预测">
+      <div class="section">
+        <div class="section-head">
+          <div>
+            <h2>今日经营预测 <span class="viz-badge" id="today-forecast-date">预测日期 -</span></h2>
+            <div class="sub" id="today-source-date-note">预测日期基于承接表最新一日确定。</div>
+            <div class="sub" id="today-source-summary">等待本地数据加载。</div>
+          </div>
+          <span class="viz-badge" id="today-workday">第0 / 0个工作日</span>
+        </div>
+        <div class="viz-grid today-kpis">
+          <div class="card viz-stat"><span class="text-muted">本月当前GMV</span><span class="viz-stat-value" id="today-month-gmv">0</span><span>预测日期所在月累计</span></div>
+          <div class="card viz-stat"><span class="text-muted">今日应销转</span><span class="viz-stat-value" id="today-predicted-carry">0</span><span>承接表最新一日实际承接</span></div>
+          <div class="card viz-stat"><span class="text-muted">今日追单预测</span><span class="viz-stat-value" id="today-chase-predicted-gmv">0单</span><span id="today-chase-predicted-text">GMV 0</span></div>
+          <div class="card viz-stat"><span class="text-muted">今日直播预测</span><span class="viz-stat-value" id="today-live-predicted-gmv">0单</span><span id="today-live-predicted-text">GMV 0</span></div>
+          <div class="card viz-stat"><span class="text-muted">今日预测UP</span><span class="viz-stat-value" id="today-predicted-up">0</span><span>按渠道历史UP估算</span></div>
+        </div>
+        <div class="two" style="margin-top:14px">
+          <div>
+            <div class="target-panel-head">
+              <h3>距离月度三档目标</h3>
+              <div class="target-time-progress">
+                <span>时间进度</span>
+                <strong id="today-target-time-progress">0.0%</strong>
+              </div>
+            </div>
+            <div class="target-row target-row-stacked goal-tier-1"><div class="target-row-head"><span>一档 <strong id="today-target-tier-1">100w</strong></span><span class="today-target-badge" id="today-target-meta-1">还差0 · 0.0%</span></div><div class="track"><div class="fill s2" id="today-target-fill-1" style="width:0%"></div></div></div>
+            <div class="target-row target-row-stacked goal-tier-2"><div class="target-row-head"><span>二档 <strong id="today-target-tier-2">150w</strong></span><span class="today-target-badge" id="today-target-meta-2">还差0 · 0.0%</span></div><div class="track"><div class="fill" id="today-target-fill-2" style="width:0%"></div></div></div>
+            <div class="target-row target-row-stacked goal-tier-3"><div class="target-row-head"><span>三档 <strong id="today-target-tier-3">200w</strong></span><span class="today-target-badge" id="today-target-meta-3">还差0 · 0.0%</span></div><div class="track"><div class="fill s3" id="today-target-fill-3" style="width:0%"></div></div></div>
+          </div>
+          <div>
+            <h3>每日GMV目标</h3>
+            <div class="health-grid">
+              <div class="health goal-tier-1"><span>一档</span><strong id="today-workday-tier-1">0</strong><span id="today-workday-gap-1">按工作日进度</span></div>
+              <div class="health goal-tier-2"><span>二档</span><strong id="today-workday-tier-2">0</strong><span id="today-workday-gap-2">按工作日进度</span></div>
+              <div class="health goal-tier-3"><span>三档</span><strong id="today-workday-tier-3">0</strong><span id="today-workday-gap-3">按工作日进度</span></div>
+            </div>
+            <div class="callout warn" style="margin-top:12px"><strong>直播+追单目标判断</strong><p class="sub" id="today-live-chase-summary">等待预测结果。</p></div>
+          </div>
+        </div>
+      </div>
+      <div class="section today-channel-section">
+        <div>
+          <h3>今日渠道构成</h3>
+          <div class="donut-wrap">
+            <div class="donut"><div class="donut-center"><div><strong id="today-donut-total">0</strong><div class="text-small">总应销转</div></div></div></div>
+            <div>
+              <div class="channel-card-list" id="today-channel-card-list"></div>
+              <div class="donut-note" id="today-donut-note">绝对数=应销转人数，百分比=占今日总应销转比例。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>按渠道预测今日转化</h3>
+        <div class="channel-flow" id="today-channel-flow"></div>
+        <div class="callout warn"><strong>AI提醒</strong><p id="today-forecast-note">等待明细表加载后生成预测逻辑说明。</p></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="review" aria-label="昨日复盘">
+      <div class="section">
+        <div class="section-head"><div><h2>昨日复盘：实际对预测</h2><div class="sub">预测口径暂未接入，预测值先显示0</div></div><span class="viz-badge" id="review-date">最新完整日</span></div>
+        <div class="compare-shell">
+          <div class="compare-pane">
+            <h3>昨日预测</h3>
+            <div class="compare-kpis">
+              <div class="compare-kpi">预测GMV<strong id="review-predicted-gmv">0</strong></div>
+              <div class="compare-kpi">预测UP<strong id="review-predicted-up">0</strong></div>
+              <div class="compare-kpi">预测承接<strong id="review-predicted-carry">0</strong></div>
+              <div class="compare-kpi">预测转化<strong id="review-predicted-conversion">0</strong></div>
+            </div>
+            <div id="review-predict-lines"></div>
+          </div>
+          <div class="compare-pane">
+            <h3>昨日实际</h3>
+            <div class="compare-kpis">
+              <div class="compare-kpi">实际GMV<strong id="review-gmv">0</strong></div>
+              <div class="compare-kpi">实际UP<strong id="review-up">0</strong></div>
+              <div class="compare-kpi">实际承接<strong id="review-carry">0</strong></div>
+              <div class="compare-kpi">实际转化<strong id="review-conv">0</strong></div>
+            </div>
+            <div id="review-actual-lines"></div>
+          </div>
+        </div>
+      </div>
+      <div class="section two">
+        <div><h3>渠道预测偏差</h3><div id="review-channel-gap"></div></div>
+        <div><h3>销售预测偏差</h3><div id="review-owner-gap"></div></div>
+      </div>
+      <div class="section callout warn"><strong>复盘结论</strong><p id="review-conclusion">预测字段暂未接入，当前仅展示实际经营结果。</p></div>
+    </section>
+
+    <section class="page" data-page="weekly" aria-label="周报">
+      <div class="section">
+        <div class="section-head"><div><h2 id="week-title">经营周报</h2><div class="sub">营收来源、渠道销售排名、历史标准与风险总结</div></div><span class="viz-badge" id="week-badge">本周GMV 0</span></div>
+        <div class="rolling"><strong>滚动历史基线</strong><span class="text-muted">上周 · 近4周均值 · 历史区间</span></div>
+        <div class="viz-grid" id="week-kpis"></div>
+      </div>
+      <div class="section two">
+        <div><h3>渠道营收完整列表</h3><div class="rank" id="week-channel-rank"></div></div>
+        <div><h3>销售营收完整列表</h3><div class="rank" id="week-owner-rank"></div></div>
+      </div>
+      <div class="section two">
+        <div><h3>近6周实际与滚动均值</h3><div id="week-trend" class="mini-chart"></div></div>
+        <div><h3>本周判断与注意项</h3><div class="callout"><strong id="week-judge-title">暂无判断</strong><p id="week-judge-text">等待数据加载。</p></div><div class="callout warn"><strong>重点注意</strong><p id="week-risk-text">暂无。</p></div></div>
+      </div>
+      <div class="section two">
+        <div><h3>AI周报总结</h3><p class="sub">自动生成基础版本，运营可编辑。</p></div>
+        <div><textarea class="form-control" id="week-summary"></textarea><div class="action-row"><span id="week-status" class="text-muted">AI草稿</span><button class="btn btn-primary summary-save" data-status="week-status" type="button">确认周报总结</button></div></div>
+      </div>
+    </section>
+
+    <section class="page active" data-page="monthly" aria-label="月报">
+      <div class="section">
+        <div class="section-head"><div><h2 id="month-title">经营月报</h2><div class="sub">月度结果、营收来源、业务过程、历史标准、实验行动与下月重点</div></div><span class="viz-badge">完整月</span></div>
+        <div class="rolling"><strong>月度历史持续更新</strong><span class="text-muted">上月 · 滚动3月均值 · 近12月历史区间</span></div>
+        <div class="viz-grid" id="month-kpis"></div>
+        <div class="target-row"><span>一档 <strong id="month-target-tier-1">100w</strong></span><div class="track"><div id="month-target-fill-1" class="fill s2" style="width:0%"></div></div><span id="month-target-gap-1">还差100w</span></div>
+        <div class="target-row"><span>二档 <strong id="month-target-tier-2">150w</strong></span><div class="track"><div id="month-target-fill-2" class="fill" style="width:0%"></div></div><span id="month-target-gap-2">还差150w</span></div>
+        <div class="target-row"><span>三档 <strong id="month-target-tier-3">200w</strong></span><div class="track"><div id="month-target-fill-3" class="fill s3" style="width:0%"></div></div><span id="month-target-gap-3">还差200w</span></div>
+      </div>
+      <div class="section wide-side">
+        <div>
+          <h2>月度营收来源</h2>
+          <div class="rank-row"><span>成交场域</span><div class="stackbar" id="month-source-stack"></div><span id="month-source-total">0</span></div>
+          <div class="section" style="box-shadow:none;margin-top:14px"><h3>渠道贡献完整列表</h3><div class="rank" id="month-channel-rank"></div></div>
+        </div>
+        <aside><h3>销售贡献完整列表</h3><div class="rank" id="month-owner-top"></div><div class="callout"><strong id="month-top-owner-title">暂无</strong><p id="month-top-owner-text">等待数据加载。</p></div></aside>
+      </div>
+      <div class="section">
+        <div class="section-head"><div><h2>月度业务过程健康度</h2><div class="sub">过程字段暂未完全接入，当前展示可由订单与承接计算的指标</div></div><span class="viz-badge">本月 vs 滚动3月</span></div>
+        <div class="health-grid" id="month-health"></div>
+      </div>
+      <div class="section two">
+        <div><h2>月度历史标准</h2><div id="month-trend" class="mini-chart"></div><div class="line-legend"><span><i></i>月实际</span><span><i class="s2"></i>滚动3月均值</span></div></div>
+        <div><h2>本月表现判断</h2><div class="callout"><strong id="month-judge-title">暂无判断</strong><p id="month-judge-text">等待数据加载。</p></div><div class="callout warn"><strong>仍需注意</strong><p id="month-risk-text">暂无。</p></div></div>
+      </div>
+      <div class="section two">
+        <div><h2>实验与新业务动作</h2><div class="health-grid"><div class="health"><strong>新激活模型</strong><span>0</span><p>待补充实验口径。</p></div><div class="health"><strong>话术B</strong><span>0</span><p>待补充实验口径。</p></div><div class="health"><strong>挂图二轮邀约</strong><span>0</span><p>待补充实验口径。</p></div></div></div>
+        <div><h2>上月行动验证</h2><div class="timeline"><div class="time-step">已验证<strong>暂无</strong><p>待补充。</p></div><div class="time-step active">继续调整<strong>暂无</strong><p>待补充。</p></div><div class="time-step">下月新增<strong>暂无</strong><p>待补充。</p></div></div></div>
+      </div>
+      <div class="section two">
+        <div><h2>AI月报总结</h2><div class="callout"><strong>基础总结可编辑</strong><p>只覆盖月度结果、来源、历史标准、风险和下月重点。</p></div></div>
+        <div><textarea class="form-control" id="month-summary"></textarea><div class="action-row"><span id="month-status" class="text-muted">AI草稿 · 待运营确认</span><button class="btn btn-primary summary-save" data-status="month-status" type="button">确认月报总结</button></div></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="channel" aria-label="渠道分析">
+      <div class="section">
+        <div class="section-head"><div><h2>渠道整体趋势</h2><div class="sub">用户量、UP、GMV、总转化率随实际数据持续更新</div></div><span class="viz-badge">近6个月</span></div>
+        <div class="two"><div><h3>渠道GMV趋势</h3><div id="channel-gmv-trend" class="mini-chart"></div></div><div><h3>渠道UP趋势</h3><div id="channel-up-trend" class="mini-chart"></div></div></div>
+      </div>
+      <div class="section">
+        <div class="section-head"><div><h2>单渠道分析</h2><div class="sub">点击渠道查看自身历史、过程指标和销售贡献</div></div><div class="tabs" id="channel-buttons" style="position:static;box-shadow:none;padding:4px"></div></div>
+        <div class="viz-grid">
+          <div class="card viz-stat"><span class="text-muted">所选渠道</span><span class="viz-stat-value" id="selected-channel">-</span><span id="selected-desc">-</span></div>
+          <div class="card viz-stat"><span class="text-muted">本月GMV</span><span class="viz-stat-value" id="selected-gmv">0</span><span id="selected-gmv-delta">-</span></div>
+          <div class="card viz-stat"><span class="text-muted">本月UP</span><span class="viz-stat-value" id="selected-up">0</span><span id="selected-up-delta">-</span></div>
+          <div class="card viz-stat"><span class="text-muted">本月承接</span><span class="viz-stat-value" id="selected-carry">0</span><span>实际承接记录</span></div>
+        </div>
+        <div class="two" style="margin-top:14px"><div><h3>所选渠道6个月走势</h3><div id="single-channel-trend" class="mini-chart"></div></div><div><h3>单渠道结论</h3><div class="callout" id="channel-conclusion"><strong>暂无</strong><p>等待数据加载。</p></div></div></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="sales" aria-label="销售排名">
+      <div class="section">
+        <div class="section-head"><div><h2>销售排名与Leader沟通记录</h2><div class="sub">保留每期快照、名次变化、优势和沟通重点</div></div><span class="viz-badge" id="sales-period">最新月</span></div>
+        <div class="table-responsive"><table><thead><tr><th>排名</th><th>销售</th><th class="text-end">GMV</th><th class="text-end">UP</th><th class="text-end">直播</th><th class="text-end">追单</th><th>近4期名次</th><th>沟通重点</th></tr></thead><tbody id="sales-table"></tbody></table></div>
+      </div>
+      <div class="section two">
+        <div><h3>成交风格：直播 vs 追单</h3><div id="sales-style"></div></div>
+        <div><h3>渠道成交分布</h3><div id="sales-channel-stack"></div></div>
+      </div>
+    </section>
+
+    <section class="page" data-page="actions" aria-label="实验与行动">
+      <div class="section">
+        <div class="section-head"><div><h2>实验验证与行动闭环</h2><div class="sub">AI发现 → 人工确认 → 正式To-do → 跨周期验证</div></div><span class="viz-badge">0项进行中</span></div>
+        <div class="two">
+          <div><h3>实验结果</h3><div class="health-grid"><div class="health"><strong>新激活模型</strong><span>0</span><p>待补充。</p></div><div class="health"><strong>话术B</strong><span>0</span><p>待补充。</p></div><div class="health"><strong>挂图二轮邀约</strong><span>0</span><p>待补充。</p></div></div></div>
+          <div><h3>行动链路</h3><div class="timeline"><div class="time-step">发现<strong>暂无</strong></div><div class="time-step">定位<strong>暂无</strong></div><div class="time-step active">行动<strong>暂无</strong></div><div class="time-step">验证<strong>暂无</strong></div></div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      carry: [],
+      orders: [],
+      forecastDetails: [],
+      periods: { week: [], month: [], day: [] },
+      selectedChannel: "",
+      charts: {}
+    };
+
+    const CHANNELS = ["1-挂图承接【私域部】", "2-公号-引流", "2-企微-回捞", "2-企微-询课", "2-有赞-下单", "2-视频号-下单", "缺失渠道", "冲突渠道", "待补录"];
+    const CORE_OWNERS = ["黄依婷", "徐佳莹", "赵宇欣", "石玉", "祁春如", "万雪莲", "吴秋禅", "辛雨薇"];
+    const OWNERS = [...CORE_OWNERS, "激活组", "待补录"];
+    const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
+    const MONTH_TARGETS = [1000000, 1500000, 2000000];
+
+    function text(value) { return String(value ?? "").trim(); }
+    function number(value) {
+      const parsed = Number(String(value ?? "").replace(/,/g, ""));
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    function parseDate(value) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+      const raw = text(value);
+      if (!raw) return null;
+      const normalized = raw.replace(/\./g, "-").replace(/\//g, "-");
+      const date = new Date(normalized);
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+    function formatDate(date) {
+      if (!date) return "";
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    }
+    function monthKey(date) {
+      if (!date) return "";
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    }
+    function monthLabel(key) {
+      if (!key) return "未知月";
+      const [year, month] = key.split("-");
+      return `${year}年${Number(month)}月`;
+    }
+    function weekStart(date) {
+      if (!date) return null;
+      const value = new Date(date);
+      const day = value.getDay() || 7;
+      value.setDate(value.getDate() - day + 1);
+      value.setHours(0, 0, 0, 0);
+      return value;
+    }
+    function weekKey(date) { return formatDate(weekStart(date)); }
+    function isoWeek(date) {
+      const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+      const day = target.getUTCDay() || 7;
+      target.setUTCDate(target.getUTCDate() + 4 - day);
+      const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+      return Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
+    }
+    function weekLabel(key) {
+      const date = parseDate(key);
+      return date ? `第${isoWeek(date)}周` : "未知周";
+    }
+    function currency(value) {
+      return Math.round(number(value)).toLocaleString("zh-CN");
+    }
+    function exactCurrency(value) {
+      return Math.round(number(value)).toLocaleString("zh-CN");
+    }
+    function plainNumber(value) { return Math.round(number(value)).toLocaleString("zh-CN"); }
+    function percent(value) { return `${number(value).toFixed(1)}%`; }
+    function sameMonth(left, right) { return monthKey(left) && monthKey(left) === monthKey(right); }
+    function changeText(current, previous) {
+      if (!previous) return "无上期";
+      const v = (current - previous) / Math.abs(previous) * 100;
+      return `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`;
+    }
+    function changeClass(current, previous) {
+      if (!previous) return "";
+      return current >= previous ? "positive" : "negative";
+    }
+    function normalizeForecastChannel(value) {
+      const channel = text(value);
+      if (!channel || channel.includes("无渠道") || channel.includes("缺失渠道")) return "缺失渠道";
+      return channel;
+    }
+    function normalizeOwnerGroup(value, pending = false) {
+      const owner = text(value);
+      if (pending || !owner || owner.includes("待补录") || owner.includes("缺失")) return "待补录";
+      return CORE_OWNERS.find(name => owner === name || owner.includes(name)) || "激活组";
+    }
+
+    function orderScope(order) {
+      if (order.attribution_type === "pending") return "往期用户候选";
+      const addTime = parseDate(order.add_time);
+      const orderTime = parseDate(order.order_time);
+      if (!addTime || !orderTime) return "往期用户";
+      return sameMonth(addTime, orderTime) ? "当期用户" : "往期用户";
+    }
+
+    function normalizePayload(payload) {
+      state.carry = (payload.carry || []).map(row => ({
+        unionid: text(row.union_id),
+        owner: normalizeOwnerGroup(row.owner_name),
+        channel: text(row.channel) || "缺失渠道",
+        addTime: parseDate(row.add_time),
+        tags: text(row.customer_tags)
+      }));
+      state.orders = (payload.orders || []).map(row => {
+        const pending = text(row.attribution_type) === "pending";
+        const paid = number(row.paid_amount);
+        const refund = number(row.refund_amount);
+        return {
+          id: text(row.order_id || row.order_no),
+          orderNo: text(row.order_no || row.order_id),
+          wxid: text(row.wxid),
+          userId: text(row.user_id),
+          orderTime: parseDate(row.order_time),
+          addTime: parseDate(row.add_time),
+          paid,
+          refund,
+          gmv: number(row.net_sales),
+          status: text(row.order_status),
+          product: text(row.product_name),
+          scenario: text(row.scenario) || (text(row.product_name).includes("直播") ? "直播间转化" : "追单转化"),
+          owner: normalizeOwnerGroup(row.owner_name, pending),
+          channel: pending ? "待补录" : (text(row.channel) || "待补录"),
+          attribution_type: text(row.attribution_type),
+          scope: orderScope(row),
+          effective: refund < paid
+        };
+      });
+      buildPeriods();
+    }
+
+    function normalizeForecastDetails(payload) {
+      state.forecastDetails = (payload.rows || []).map(row => ({
+        period: text(row.period),
+        date: parseDate(row.date),
+        month: text(row.month),
+        channel: normalizeForecastChannel(row.channel),
+        owner: normalizeOwnerGroup(row.owner),
+        carry: number(row.carry),
+        gmv: number(row.gmv),
+        attendance: number(row.attendance),
+        isDaily: Boolean(row.is_daily)
+      })).filter(row => row.date && row.channel && row.owner);
+    }
+
+    function emptyBucket(key, label, date) {
+      return { key, label, date, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, refunds: 0, refundAmount: 0, conversionUsers: new Set(), channels: new Map(), owners: new Map(), ownerChannels: new Map() };
+    }
+    function ensureMetric(map, name) {
+      if (!map.has(name)) map.set(name, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] });
+      return map.get(name);
+    }
+    function ensureOwnerChannel(map, owner, channel) {
+      const key = `${owner}__${channel}`;
+      if (!map.has(key)) map.set(key, { owner, channel, carry: 0, orders: 0, gmv: 0 });
+      return map.get(key);
+    }
+    function bucketFor(date, mode) {
+      if (!date) return null;
+      if (mode === "day") return { key: formatDate(date), label: formatDate(date), date: new Date(date.getFullYear(), date.getMonth(), date.getDate()) };
+      if (mode === "week") {
+        const start = weekStart(date);
+        return { key: formatDate(start), label: weekLabel(formatDate(start)), date: start };
+      }
+      return { key: monthKey(date), label: monthLabel(monthKey(date)), date: new Date(date.getFullYear(), date.getMonth(), 1) };
+    }
+    function aggregatePeriod(mode) {
+      const map = new Map();
+      const ensure = bucket => {
+        if (!bucket) return null;
+        if (!map.has(bucket.key)) map.set(bucket.key, emptyBucket(bucket.key, bucket.label, bucket.date));
+        return map.get(bucket.key);
+      };
+      state.carry.forEach(user => {
+        const row = ensure(bucketFor(user.addTime, mode));
+        if (!row) return;
+        const attended = user.tags.includes("螳螂到课");
+        row.carry += 1;
+        if (attended) row.attendance += 1;
+        const channel = ensureMetric(row.channels, user.channel);
+        channel.carry += 1;
+        if (attended) channel.attendance += 1;
+        const owner = ensureMetric(row.owners, user.owner);
+        owner.carry += 1;
+        if (attended) owner.attendance += 1;
+        ensureOwnerChannel(row.ownerChannels, user.owner, user.channel).carry += 1;
+      });
+      state.orders.forEach(order => {
+        const row = ensure(bucketFor(order.orderTime, mode));
+        if (!row) return;
+        row.orders += 1;
+        row.gmv += order.gmv;
+        row.refundAmount += order.refund;
+        if (order.refund > 0) row.refunds += 1;
+        if (order.effective) row.conversionUsers.add(order.wxid);
+        if (order.scenario === "直播间转化") row.live += order.gmv;
+        else row.chase += order.gmv;
+        const channel = ensureMetric(row.channels, order.channel);
+        channel.orders += 1; channel.gmv += order.gmv; channel.refundAmount += order.refund;
+        if (order.orderNo) channel.orderNos.push(order.orderNo);
+        if (order.refund > 0) channel.refunds += 1;
+        if (order.effective) channel.conversionUsers.add(order.wxid);
+        if (order.scenario === "直播间转化") channel.live += order.gmv; else channel.chase += order.gmv;
+        const owner = ensureMetric(row.owners, order.owner);
+        owner.orders += 1; owner.gmv += order.gmv; owner.refundAmount += order.refund;
+        if (order.orderNo) owner.orderNos.push(order.orderNo);
+        if (order.refund > 0) owner.refunds += 1;
+        if (order.effective) owner.conversionUsers.add(order.wxid);
+        if (order.scenario === "直播间转化") owner.live += order.gmv; else owner.chase += order.gmv;
+        const oc = ensureOwnerChannel(row.ownerChannels, order.owner, order.channel);
+        oc.orders += 1; oc.gmv += order.gmv;
+      });
+      return [...map.values()].sort((a, b) => a.date - b.date).map(row => ({ ...row, conversion: row.conversionUsers.size, up: row.carry ? row.gmv / row.carry : 0 }));
+    }
+    function buildPeriods() {
+      state.periods.day = aggregatePeriod("day");
+      state.periods.week = aggregatePeriod("week");
+      state.periods.month = aggregatePeriod("month");
+    }
+
+    function latest(mode) { const rows = state.periods[mode] || []; return rows[rows.length - 1] || emptyBucket("", "暂无", new Date()); }
+    function previous(mode) { const rows = state.periods[mode] || []; return rows[rows.length - 2] || null; }
+    function topRows(map, limit = 5, key = "gmv") {
+      return [...map.values()].sort((a, b) => (b[key] || 0) - (a[key] || 0)).slice(0, limit).map(row => ({ ...row, conversion: row.conversionUsers?.size || 0, up: row.carry ? row.gmv / row.carry : 0 }));
+    }
+    function allRows(map, key = "gmv") {
+      return [...map.values()].sort((a, b) => (b[key] || 0) - (a[key] || 0)).map(row => ({ ...row, conversion: row.conversionUsers?.size || 0, up: row.carry ? row.gmv / row.carry : 0 }));
+    }
+    function completeRows(map, names, key = "gmv") {
+      return names
+        .map(name => compactMetric(metricFromMap(map, name)))
+        .sort((a, b) => (b[key] || 0) - (a[key] || 0));
+    }
+    function completeDimensionRows(actual, prediction, dimension, names) {
+      return names.map(name => {
+        const actualItem = compactMetric(metricFromMap(actual[dimension], name));
+        const predictedItem = compactMetric(metricFromMap(prediction[dimension], name));
+        return {
+          name,
+          actual: actualItem,
+          predicted: predictedItem,
+          gap: actualItem.gmv - predictedItem.gmv
+        };
+      }).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+    }
+    function share(value, total) { return total ? Math.max(2, Math.min(100, value / total * 100)) : 0; }
+
+    function statCard(label, value, hint, cls = "") {
+      return `<div class="card viz-stat"><span class="text-muted">${label}</span><span class="viz-stat-value">${value}</span><span class="${cls}">${hint}</span></div>`;
+    }
+    function rankHtml(rows, total, baselineRows = []) {
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const max = Math.max(...rows.map(row => row.gmv), 1);
+      return rows.map((row, index) => {
+        const base = baselineRows.find(item => item.name === row.name)?.gmv || 0;
+        const change = changeText(row.gmv, base);
+        return `<div><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>贡献${percent(total ? row.gmv / total * 100 : 0)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span></div></div>`;
+      }).join("");
+    }
+    function dimensionReportHtml(rows, total, baselineRows = []) {
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const max = Math.max(...rows.map(row => row.gmv), 1);
+      return rows.map((row, index) => {
+        const base = baselineRows.find(item => item.name === row.name)?.gmv || 0;
+        const change = changeText(row.gmv, base);
+        const contribution = total ? row.gmv / total * 100 : 0;
+        return `<div><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span></div></div>`;
+      }).join("");
+    }
+    function stackHtml(left, right, leftName = "直播", rightName = "追单") {
+      const total = left + right;
+      const lp = total ? left / total * 100 : 0;
+      const rp = total ? right / total * 100 : 0;
+      return `<i class="live" style="width:${lp}%">${leftName} ${currency(left)}</i><i class="chase" style="width:${rp}%">${rightName} ${currency(right)}</i>`;
+    }
+    function ownerChannelStack(owner, period) {
+      const rows = CHANNELS.map(channel => period.ownerChannels.get(`${owner}__${channel}`)).filter(Boolean);
+      const total = rows.reduce((sum, row) => sum + row.gmv, 0);
+      if (!total) return `<i class="seg-a" style="width:100%">0</i>`;
+      return rows.slice(0, 4).map((row, index) => `<i class="seg-${["a","b","c","d"][index]}" style="width:${row.gmv / total * 100}%">${shortChannel(row.channel)} ${Math.round(row.gmv / total * 100)}</i>`).join("");
+    }
+    function shortChannel(name) {
+      if (name.includes("挂图")) return "挂图";
+      if (name.includes("公号")) return "公号";
+      if (name.includes("回捞")) return "回捞";
+      if (name.includes("询课")) return "询课";
+      if (name.includes("有赞")) return "有赞";
+      if (name.includes("视频号")) return "视频号";
+      if (name.includes("待")) return "待补录";
+      return name.slice(0, 2);
+    }
+    function isMissingChannel(name) {
+      return shortChannel(text(name)) === "缺失";
+    }
+    function isInquiryChannel(name) {
+      return shortChannel(text(name)) === "询课";
+    }
+
+    function renderTabs() {
+      const root = document.getElementById("sales-dashboard-master-v5");
+      const tabs = root.querySelectorAll("[data-tab]");
+      const pages = root.querySelectorAll("[data-page]");
+      tabs.forEach(tab => tab.addEventListener("click", () => {
+        tabs.forEach(peer => peer.classList.toggle("btn-primary", peer === tab));
+        pages.forEach(page => page.classList.toggle("active", page.dataset.page === tab.dataset.tab));
+        setTimeout(resizeCharts, 80);
+      }));
+      root.querySelectorAll(".summary-save").forEach(button => button.addEventListener("click", () => {
+        const status = document.getElementById(button.dataset.status);
+        status.textContent = "已由运营确认";
+        status.className = "positive";
+        button.textContent = "已确认";
+        button.disabled = true;
+      }));
+    }
+
+    function dateOnly(date) {
+      return date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : null;
+    }
+    function sameDate(left, right) {
+      const a = dateOnly(left);
+      const b = dateOnly(right);
+      return !!a && !!b && a.getTime() === b.getTime();
+    }
+    function addDays(date, offset) {
+      const value = dateOnly(date);
+      if (!value) return null;
+      value.setDate(value.getDate() + offset);
+      return value;
+    }
+    function latestOrderDate() {
+      const dates = state.orders.map(order => dateOnly(order.orderTime)).filter(Boolean).sort((a, b) => a - b);
+      return dates[dates.length - 1] || dateOnly(new Date());
+    }
+    function latestCarryDate() {
+      const dates = state.carry.map(row => dateOnly(row.addTime)).filter(Boolean).sort((a, b) => a - b);
+      return dates[dates.length - 1] || null;
+    }
+    function monthForDate(targetDate) {
+      const key = monthKey(targetDate);
+      return (state.periods.month || []).find(row => row.key === key) || emptyBucket(key, monthLabel(key), new Date(targetDate.getFullYear(), targetDate.getMonth(), 1));
+    }
+    function previousOrderDate(targetDate) {
+      const target = dateOnly(targetDate);
+      const rows = state.orders
+        .map(order => dateOnly(order.orderTime))
+        .filter(date => date && (!target || date < target))
+        .sort((a, b) => a - b);
+      return rows[rows.length - 1] || addDays(target, -1);
+    }
+    function rowsBeforeDay(targetDate, days = 28) {
+      const target = dateOnly(targetDate);
+      if (!target) return [];
+      const start = addDays(target, -days);
+      const rows = (state.periods.day || []).filter(row => row.date && row.date < target);
+      const windowRows = rows.filter(row => row.date >= start);
+      return windowRows.length ? windowRows : rows;
+    }
+    function metricFromMap(map, name) {
+      const value = map?.get(name);
+      return value || { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] };
+    }
+    function compactMetric(row) {
+      return {
+        name: row.name,
+        carry: number(row.carry),
+        orders: number(row.orders),
+        gmv: number(row.gmv),
+        live: number(row.live),
+        chase: number(row.chase),
+        attendance: number(row.attendance),
+        conversion: row.conversionUsers?.size || number(row.conversion),
+        up: row.carry ? number(row.gmv) / row.carry : 0,
+        orderNos: [...new Set(row.orderNos || [])]
+      };
+    }
+    function sumDimension(rows, dimension, name) {
+      return rows.reduce((sum, row) => {
+        const item = compactMetric(metricFromMap(row[dimension], name));
+        sum.carry += item.carry;
+        sum.orders += item.orders;
+        sum.gmv += item.gmv;
+        sum.live += item.live;
+        sum.chase += item.chase;
+        sum.attendance += item.attendance;
+        sum.conversion += item.conversion;
+        return sum;
+      }, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, conversion: 0 });
+    }
+    function baselineForDate(targetDate) {
+      const rows = rowsBeforeDay(targetDate, 28);
+      const target = dateOnly(targetDate);
+      const sameWeekday = rows.filter(row => row.date && target && row.date.getDay() === target.getDay());
+      return sameWeekday.length >= 2 ? sameWeekday : rows;
+    }
+    function actualDay(targetDate) {
+      const target = dateOnly(targetDate);
+      const row = (state.periods.day || []).find(item => sameDate(item.date, target));
+      if (!row) return { ...emptyBucket(formatDate(target), formatDate(target), target), conversion: 0, up: 0 };
+      return { ...row, conversion: row.conversionUsers?.size || 0, up: row.carry ? row.gmv / row.carry : 0 };
+    }
+    function actualCarryDay(targetDate) {
+      const target = dateOnly(targetDate);
+      const bucket = emptyBucket(formatDate(target), formatDate(target), target);
+      if (!target) return { ...bucket, conversion: 0, up: 0 };
+      state.carry.forEach(user => {
+        if (!sameDate(user.addTime, target)) return;
+        const attended = user.tags.includes("螳螂到课");
+        bucket.carry += 1;
+        if (attended) bucket.attendance = (bucket.attendance || 0) + 1;
+        const channel = ensureMetric(bucket.channels, user.channel);
+        channel.carry += 1;
+        if (attended) channel.attendance = (channel.attendance || 0) + 1;
+        const owner = ensureMetric(bucket.owners, user.owner);
+        owner.carry += 1;
+        if (attended) owner.attendance = (owner.attendance || 0) + 1;
+        ensureOwnerChannel(bucket.ownerChannels, user.owner, user.channel).carry += 1;
+      });
+      return { ...bucket, conversion: 0, up: 0 };
+    }
+    function buildPredictionDimension(names, rows, actual, dimension, totalUp, totalLiveShare) {
+      const baselineCount = Math.max(1, rows.length);
+      const map = new Map();
+      names.forEach(name => {
+        const hist = sumDimension(rows, dimension, name);
+        const now = compactMetric(metricFromMap(actual[dimension], name));
+        const predictedCarry = now.carry || hist.carry / baselineCount;
+        const up = hist.carry ? hist.gmv / hist.carry : totalUp;
+        const gmv = predictedCarry * up;
+        const liveShare = hist.gmv ? hist.live / hist.gmv : totalLiveShare;
+        const live = gmv * liveShare;
+        const chase = Math.max(0, gmv - live);
+        const conversionRate = hist.carry ? hist.conversion / hist.carry : 0;
+        map.set(name, { name, carry: predictedCarry, orders: 0, gmv, live, chase, conversion: predictedCarry * conversionRate, up });
+      });
+      return map;
+    }
+    function predictDay(targetDate) {
+      const target = dateOnly(targetDate);
+      const rows = baselineForDate(target);
+      const actual = actualDay(target);
+      const baselineCount = Math.max(1, rows.length);
+      const total = rows.reduce((sum, row) => {
+        sum.carry += row.carry || 0;
+        sum.gmv += row.gmv || 0;
+        sum.live += row.live || 0;
+        sum.chase += row.chase || 0;
+        sum.conversion += row.conversionUsers?.size || row.conversion || 0;
+        return sum;
+      }, { carry: 0, gmv: 0, live: 0, chase: 0, conversion: 0 });
+      const totalUp = total.carry ? total.gmv / total.carry : 0;
+      const totalLiveShare = total.gmv ? total.live / total.gmv : 0;
+      const channels = buildPredictionDimension(CHANNELS, rows, actual, "channels", totalUp, totalLiveShare);
+      const owners = buildPredictionDimension(OWNERS, rows, actual, "owners", totalUp, totalLiveShare);
+      const predictedCarry = [...channels.values()].reduce((sum, row) => sum + row.carry, 0) || actual.carry || total.carry / baselineCount;
+      let predictedGmv = [...channels.values()].reduce((sum, row) => sum + row.gmv, 0);
+      if (!predictedGmv && predictedCarry) predictedGmv = predictedCarry * totalUp;
+      const predictedLive = [...channels.values()].reduce((sum, row) => sum + row.live, 0) || predictedGmv * totalLiveShare;
+      const predictedConversionRate = total.carry ? total.conversion / total.carry : 0;
+      return {
+        key: formatDate(target),
+        label: formatDate(target),
+        date: target,
+        carry: predictedCarry,
+        orders: 0,
+        gmv: predictedGmv,
+        live: predictedLive,
+        chase: Math.max(0, predictedGmv - predictedLive),
+        conversion: predictedCarry * predictedConversionRate,
+        up: predictedCarry ? predictedGmv / predictedCarry : 0,
+        channels,
+        owners,
+        baselineDays: rows.length
+      };
+    }
+    function dimensionPredictionRows(actual, prediction, dimension) {
+      const names = new Set([...(actual[dimension]?.keys?.() || []), ...(prediction[dimension]?.keys?.() || [])]);
+      return [...names].map(name => {
+        const actualItem = compactMetric(metricFromMap(actual[dimension], name));
+        const predictedItem = compactMetric(metricFromMap(prediction[dimension], name));
+        return { name, actual: actualItem, predicted: predictedItem, gap: actualItem.gmv - predictedItem.gmv };
+      }).sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+    }
+    function renderGapRows(rows) {
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const maxGap = Math.max(...rows.map(row => Math.abs(row.gap)), 1);
+      return rows.slice(0, 6).map(row => {
+        const positive = row.gap >= 0;
+        return `<div class="gap-row"><span>${shortChannel(row.name)}</span><div class="zero-bar"><i class="${positive ? "gap-positive" : "gap-negative"}" style="width:${share(Math.abs(row.gap), maxGap) / 2}%"></i></div><span class="${positive ? "positive" : "negative"}">${positive ? "+" : "-"}${currency(Math.abs(row.gap))}</span></div>`;
+      }).join("");
+    }
+    function renderVarianceRows(rows, options = {}) {
+      const label = options.short ? shortChannel : name => name;
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const maxGap = Math.max(...rows.map(row => Math.abs(row.gap)), 1);
+      return rows.map(row => {
+        const positive = row.gap >= 0;
+        return `<div class="gap-row"><span>${label(row.name)}</span><div class="zero-bar"><i class="${positive ? "gap-positive" : "gap-negative"}" style="width:${share(Math.abs(row.gap), maxGap) / 2}%"></i></div><span class="${positive ? "positive" : "negative"}">${positive ? "+" : "-"}${exactCurrency(Math.abs(row.gap))}</span></div><div class="rank-note"><span>预测GMV ${exactCurrency(row.predicted.gmv)} / 预测订单数 ${plainNumber(row.predicted.orders)}</span><span>实际GMV ${exactCurrency(row.actual.gmv)} / 实际订单数 ${plainNumber(row.actual.orders)}</span></div>`;
+      }).join("");
+    }
+    function renderPredictionLines(rows, total) {
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      return rows.map((row, index) => `<div class="compare-line"><div class="compare-head"><strong>${shortChannel(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(row.gmv, total)}%"></div></div></div>`).join("");
+    }
+    function renderReviewMetricLines(rows, total, options = {}) {
+      const label = options.short ? shortChannel : name => name;
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const comparisonRows = new Map((options.comparisonRows || []).map(row => [row.name, row]));
+      const max = Math.max(total, ...rows.map(row => row.gmv), 1);
+      return rows.map((row, index) => {
+        const comparison = comparisonRows.get(row.name);
+        const orderNos = [...new Set(row.orderNos || [])];
+        const gmvGap = comparison
+          ? (options.gapMode === "comparison-minus-row" ? comparison.gmv - row.gmv : row.gmv - comparison.gmv)
+          : 0;
+        const orderGap = comparison
+          ? (options.gapMode === "comparison-minus-row" ? comparison.orders - row.orders : row.orders - comparison.orders)
+          : 0;
+        const gapNote = comparison
+          ? `<div class="rank-note"><span class="${gmvGap >= 0 ? "positive" : "negative"}">GMV差 ${gmvGap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gmvGap))}</span><span class="${orderGap >= 0 ? "positive" : "negative"}">订单差 ${orderGap >= 0 ? "+" : "-"}${plainNumber(Math.abs(orderGap))}</span></div>`
+          : "";
+        const orderDetail = options.showOrders
+          ? `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`
+          : "";
+        const rowClass = options.showOrders ? "compare-line is-clickable" : "compare-line";
+        const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
+        const hint = options.showOrders ? " · 点击查看订单号" : "";
+        return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}${hint}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(row.gmv, max)}%"></div></div>${gapNote}${orderDetail}</div>`;
+      }).join("");
+    }
+    function workdayStatus(targetDate) {
+      const target = dateOnly(targetDate);
+      if (!target) return "第0 / 0个工作日";
+      const meta = workdayMeta(target);
+      return `第${meta.index} / ${meta.total}个工作日`;
+    }
+    function isBusinessDay(date) {
+      const day = date?.getDay?.();
+      return day !== 0 && day !== 6;
+    }
+    function workdayMeta(targetDate) {
+      const target = dateOnly(targetDate);
+      if (!target) return { index: 0, total: 0 };
+      let current = new Date(target.getFullYear(), target.getMonth(), 1);
+      let index = 0;
+      let total = 0;
+      while (current.getMonth() === target.getMonth()) {
+        if (isBusinessDay(current)) {
+          total += 1;
+          if (current <= target) index += 1;
+        }
+        current.setDate(current.getDate() + 1);
+      }
+      return { index, total };
+    }
+    function remainingWorkdays(targetDate) {
+      const meta = workdayMeta(targetDate);
+      return Math.max(1, meta.total - meta.index + 1);
+    }
+    function latestForecastDetailDate() {
+      const dates = state.forecastDetails.filter(row => row.isDaily).map(row => dateOnly(row.date)).filter(Boolean).sort((a, b) => a - b);
+      return dates[dates.length - 1] || null;
+    }
+    function detailWindowRows(targetDate, size = 20) {
+      const target = dateOnly(targetDate);
+      if (!target) return [];
+      const rows = state.forecastDetails.filter(row => row.isDaily && row.date && row.date < target && isBusinessDay(row.date));
+      const keys = [...new Set(rows.map(row => formatDate(row.date)))].sort().slice(-size);
+      const keySet = new Set(keys);
+      return rows.filter(row => keySet.has(formatDate(row.date)));
+    }
+    function aggregateDetailRows(rows, divisor) {
+      const channels = new Map();
+      const owners = new Map();
+      const total = { carry: 0, gmv: 0, attendance: 0 };
+      rows.forEach(row => {
+        total.carry += row.carry;
+        total.gmv += row.gmv;
+        total.attendance += row.attendance;
+        if (!channels.has(row.channel)) channels.set(row.channel, { name: row.channel, carry: 0, gmv: 0, attendance: 0 });
+        const channel = channels.get(row.channel);
+        channel.carry += row.carry;
+        channel.gmv += row.gmv;
+        channel.attendance += row.attendance;
+        if (!owners.has(row.owner)) owners.set(row.owner, { name: row.owner, carry: 0, gmv: 0, attendance: 0 });
+        const owner = owners.get(row.owner);
+        owner.carry += row.carry;
+        owner.gmv += row.gmv;
+        owner.attendance += row.attendance;
+      });
+      const normalize = item => ({
+        ...item,
+        carry: item.carry / divisor,
+        gmv: item.gmv / divisor,
+        attendance: item.attendance / divisor,
+        appointments: item.carry / divisor * 0.5,
+        up: item.carry ? item.gmv / item.carry : 0
+      });
+      return {
+        carry: total.carry / divisor,
+        gmv: total.gmv / divisor,
+        attendance: total.attendance / divisor,
+        appointments: total.carry / divisor * 0.5,
+        up: total.carry ? total.gmv / total.carry : 0,
+        channels: new Map([...channels.entries()].map(([name, value]) => [name, normalize(value)])),
+        owners: new Map([...owners.entries()].map(([name, value]) => [name, normalize(value)]))
+      };
+    }
+    function predictTodayFromDetail(targetDate) {
+      const target = dateOnly(targetDate) || latestForecastDetailDate();
+      const rows = detailWindowRows(target, 20);
+      const dayCount = new Set(rows.map(row => formatDate(row.date))).size;
+      if (!dayCount) return null;
+      const prediction = aggregateDetailRows(rows, dayCount);
+      return { ...prediction, date: target, label: formatDate(target), baselineDays: dayCount };
+    }
+    function percentile(values, ratio) {
+      const sorted = values.filter(value => value > 0).sort((a, b) => a - b);
+      if (!sorted.length) return 0;
+      const position = (sorted.length - 1) * ratio;
+      const low = Math.floor(position);
+      const high = Math.min(low + 1, sorted.length - 1);
+      if (low === high) return sorted[low];
+      return sorted[low] * (high - position) + sorted[high] * (position - low);
+    }
+    function historicalOrderDailyRows(targetDate) {
+      const target = dateOnly(targetDate);
+      const map = new Map();
+      state.orders.forEach(order => {
+        const day = dateOnly(order.orderTime);
+        if (!day || (target && day >= target)) return;
+        const key = formatDate(day);
+        if (!map.has(key)) map.set(key, { key, date: day, gmv: 0, chase: 0, live: 0, orders: 0 });
+        const row = map.get(key);
+        row.gmv += order.gmv;
+        row.orders += 1;
+        if (isChaseOrder(order)) row.chase += order.gmv;
+        if (isLiveOrder(order)) row.live += order.gmv;
+      });
+      return [...map.values()].sort((a, b) => a.date - b.date);
+    }
+    function isChaseOrder(order) {
+      const product = text(order.product);
+      if (product) return !product.includes("直播");
+      return order.scenario !== "直播间转化";
+    }
+    function isLiveOrder(order) {
+      const product = text(order.product);
+      if (product) return product.includes("直播");
+      return order.scenario === "直播间转化";
+    }
+    function historicalDailyGmvTargets(targetDate) {
+      const rows = historicalOrderDailyRows(targetDate);
+      const values = rows.map(row => row.gmv);
+      return [percentile(values, 0.5), percentile(values, 0.75), percentile(values, 0.9)];
+    }
+    function historicalChaseTarget(targetDate) {
+      const rows = historicalOrderDailyRows(targetDate);
+      return percentile(rows.map(row => row.chase), 0.75);
+    }
+    function historicalLiveTarget(targetDate) {
+      const rows = historicalOrderDailyRows(targetDate);
+      return percentile(rows.map(row => row.live), 0.75);
+    }
+    function historicalChaseShare(targetDate) {
+      const target = dateOnly(targetDate);
+      const start = addDays(target, -28);
+      let gmv = 0;
+      let chase = 0;
+      state.orders.forEach(order => {
+        const day = dateOnly(order.orderTime);
+        if (!day || !target || day >= target || day < start) return;
+        gmv += order.gmv;
+        if (isChaseOrder(order)) chase += order.gmv;
+      });
+      return gmv ? chase / gmv : 0;
+    }
+    function historicalLiveShare(targetDate) {
+      const target = dateOnly(targetDate);
+      const start = addDays(target, -28);
+      let gmv = 0;
+      let live = 0;
+      state.orders.forEach(order => {
+        const day = dateOnly(order.orderTime);
+        if (!day || !target || day >= target || day < start) return;
+        gmv += order.gmv;
+        if (isLiveOrder(order)) live += order.gmv;
+      });
+      return gmv ? live / gmv : 0;
+    }
+    function channelPalette(index) {
+      const colors = ["#165DFF", "#20C7B5", "#F6B800", "#FF7A45", "#7B61FF", "#36B37E", "#E15D97", "#8B949E"];
+      return colors[index % colors.length];
+    }
+    function renderTodayChannelLegend(rows, total) {
+      const donut = document.querySelector(".donut");
+      if (!donut) return "";
+      if (!rows.length || !total) {
+        donut.style.background = "conic-gradient(#E5E7EB 0 100%)";
+        return `<div class="sub">暂无渠道数据</div>`;
+      }
+      let cursor = 0;
+      const stops = rows.map((row, index) => {
+        const span = row.carry / total * 100;
+        const start = cursor;
+        cursor += span;
+        return `${channelPalette(index)} ${start}% ${cursor}%`;
+      });
+      donut.style.background = `conic-gradient(${stops.join(", ")})`;
+      return rows.map((row, index) => {
+        const percentValue = total ? row.carry / total * 100 : 0;
+        return `
+          <div class="channel-card today-channel-card" style="--chip:${channelPalette(index)}">
+            <div class="channel-card-top">
+              <div class="channel-card-name"><i class="channel-chip"></i><span>${shortChannel(row.name)}</span></div>
+              <span class="text-muted">${percent(percentValue)}</span>
+            </div>
+            <div class="channel-card-main">
+              <strong>${plainNumber(row.carry)}</strong>
+              <span>应销转人数</span>
+            </div>
+            <div class="channel-card-bar today-channel-card-bar"><i style="width:${share(row.carry, total)}%"></i></div>
+          </div>
+        `;
+      }).join("");
+    }
+    function renderMonthlyTargets(currentGmv, targetDate) {
+      const meta = workdayMeta(targetDate);
+      const timeProgress = meta.total ? meta.index / meta.total * 100 : 0;
+      document.getElementById("today-target-time-progress").textContent = percent(timeProgress);
+      MONTH_TARGETS.forEach((target, index) => {
+        const tier = index + 1;
+        const progress = target ? Math.min(100, currentGmv / target * 100) : 0;
+        const remaining = Math.max(0, target - currentGmv);
+        const completionPercent = target ? currentGmv / target * 100 : 0;
+        document.getElementById(`today-target-tier-${tier}`).textContent = currency(target);
+        document.getElementById(`today-target-fill-${tier}`).style.width = `${progress}%`;
+        document.getElementById(`today-target-meta-${tier}`).textContent = `已完成${percent(completionPercent)} 还差${currency(remaining)}`;
+      });
+    }
+    function renderReportMonthlyTargets(currentGmv) {
+      MONTH_TARGETS.forEach((target, index) => {
+        const tier = index + 1;
+        const progress = target ? Math.min(100, Math.max(0, currentGmv / target * 100)) : 0;
+        document.getElementById(`month-target-tier-${tier}`).textContent = `${Math.round(target / 10000)}w`;
+        document.getElementById(`month-target-fill-${tier}`).style.width = `${progress}%`;
+        document.getElementById(`month-target-gap-${tier}`).textContent = currentGmv >= target ? "已达成" : `还差${exactCurrency(target - currentGmv)}`;
+      });
+    }
+    function predictedOrderCount(gmv) {
+      return Math.max(0, Math.round(number(gmv) / 2980));
+    }
+    function dailyRequiredTargets(currentGmv, targetDate) {
+      const days = remainingWorkdays(targetDate);
+      return MONTH_TARGETS.map(target => Math.max(0, (target - currentGmv) / days));
+    }
+    function renderWorkdayTargets(targetDate, currentGmv, predictedGmv) {
+      const targets = dailyRequiredTargets(currentGmv, targetDate);
+      targets.forEach((target, index) => {
+        const tier = index + 1;
+        if (!target) {
+          document.getElementById(`today-workday-tier-${tier}`).textContent = "达成";
+          document.getElementById(`today-workday-gap-${tier}`).textContent = "月度目标已达成（0.0%）";
+          return;
+        }
+        const gap = predictedGmv - target;
+        const gapPercent = Math.abs(gap) / target * 100;
+        document.getElementById(`today-workday-tier-${tier}`).textContent = currency(target);
+        document.getElementById(`today-workday-gap-${tier}`).textContent = gap >= 0 ? `预计超${currency(gap)}（${percent(gapPercent)}）` : `预计差${currency(Math.abs(gap))}（${percent(gapPercent)}）`;
+      });
+      return targets;
+    }
+    function historicalPredictionModel(targetDate) {
+      const detailRows = detailWindowRows(targetDate, 20);
+      const detailDays = new Set(detailRows.map(row => formatDate(row.date))).size;
+      const detail = detailDays ? aggregateDetailRows(detailRows, detailDays) : null;
+      const orderRows = historicalOrderDailyRows(targetDate).slice(-28);
+      const orderGmv = orderRows.reduce((sum, row) => sum + row.gmv, 0);
+      const orderLive = orderRows.reduce((sum, row) => sum + row.live, 0);
+      const orderChase = orderRows.reduce((sum, row) => sum + row.chase, 0);
+      const periodRows = rowsBeforeDay(targetDate, 28);
+      const target = dateOnly(targetDate);
+      const actualCarry = actualCarryDay(target);
+      const avg = rows => rows.length ? rows.reduce((sum, row) => sum + row.gmv, 0) / rows.length : 0;
+      const avgCarry = rows => rows.length ? rows.reduce((sum, row) => sum + (row.carry || 0), 0) / rows.length : 0;
+      const clampFactor = (value, min = 0.35, max = 2.8) => Math.max(min, Math.min(max, Number.isFinite(value) ? value : 1));
+      const channelTotals = new Map();
+      const ownerTotals = new Map();
+      periodRows.forEach(row => {
+        row.channels.forEach((value, name) => {
+          if (!channelTotals.has(name)) channelTotals.set(name, { name, carry: 0, orders: 0, gmv: 0 });
+          const item = channelTotals.get(name);
+          item.carry += value.carry || 0;
+          item.orders += value.orders || 0;
+          item.gmv += value.gmv || 0;
+          item.attendance = (item.attendance || 0) + (value.attendance || 0);
+        });
+        row.owners.forEach((value, name) => {
+          if (!ownerTotals.has(name)) ownerTotals.set(name, { name, carry: 0, orders: 0, gmv: 0 });
+          const item = ownerTotals.get(name);
+          item.carry += value.carry || 0;
+          item.orders += value.orders || 0;
+          item.gmv += value.gmv || 0;
+          item.attendance = (item.attendance || 0) + (value.attendance || 0);
+        });
+      });
+      const detailGmv = detail?.gmv || 0;
+      const fallbackGmv = orderRows.length ? orderGmv / orderRows.length : 0;
+      const rollingGmv = avg(periodRows) || fallbackGmv;
+      const recentGmv = avg(periodRows.slice(-7)) || rollingGmv || fallbackGmv;
+      const sameWeekdayRows = periodRows.filter(row => row.date && target && row.date.getDay() === target.getDay());
+      const weekdayGmv = avg(sameWeekdayRows) || rollingGmv || fallbackGmv;
+      const baseGmv = detailGmv || rollingGmv || fallbackGmv;
+      const carry = detail?.carry || avgCarry(periodRows) || 0;
+      const attendance = detail?.attendance || periodRows.reduce((sum, row) => sum + (row.attendance || 0), 0) / Math.max(1, periodRows.length);
+      const historicalOrders = detail?.gmv ? detail.gmv / 2980 : periodRows.reduce((sum, row) => sum + (row.orders || 0), 0) / Math.max(1, periodRows.length);
+      const targetCarry = actualCarry.carry || carry || 0;
+      const historicalAttendanceRate = carry ? attendance / carry : 0;
+      const targetAttendanceRate = targetCarry ? (actualCarry.attendance || 0) / targetCarry : historicalAttendanceRate;
+      const liveShare = orderGmv ? orderLive / orderGmv : 0.5;
+      const chaseShare = orderGmv ? orderChase / orderGmv : Math.max(0, 1 - liveShare);
+      const overallUp = carry ? baseGmv / carry : 0;
+      let channelWeightedUp = 0;
+      actualCarry.channels.forEach((value, name) => {
+        const history = channelTotals.get(name);
+        const channelUp = history?.carry ? history.gmv / history.carry : overallUp;
+        channelWeightedUp += (value.carry || 0) * channelUp;
+      });
+      channelWeightedUp = targetCarry ? channelWeightedUp / targetCarry : overallUp;
+      const carryScale = carry ? targetCarry / carry : 1;
+      const weekdayFactor = rollingGmv ? weekdayGmv / rollingGmv : 1;
+      const recentTrendFactor = rollingGmv ? recentGmv / rollingGmv : 1;
+      const channelFactor = overallUp ? channelWeightedUp / overallUp : 1;
+      const attendanceFactor = historicalAttendanceRate ? 1 + (targetAttendanceRate - historicalAttendanceRate) : 1;
+      const historicalConversionRate = carry ? historicalOrders / carry : 0;
+      const smoothedConversionRate = (historicalOrders + historicalConversionRate * 80) / Math.max(1, carry + 80);
+      const nonCarryFactor = clampFactor(
+        0.34 * clampFactor(weekdayFactor, 0.6, 1.5)
+        + 0.30 * clampFactor(recentTrendFactor, 0.6, 1.6)
+        + 0.24 * clampFactor(channelFactor, 0.55, 1.7)
+        + 0.12 * clampFactor(attendanceFactor, 0.75, 1.35),
+        0.45,
+        2.2
+      );
+      const predictedOrdersFromCarry = targetCarry * smoothedConversionRate * nonCarryFactor;
+      const gmv = Math.max(0, Math.round(predictedOrdersFromCarry)) * 2980;
+      const buildModelDimension = (names, detailMap, historyMap) => {
+        const totalHistoryGmv = [...historyMap.values()].reduce((sum, row) => sum + row.gmv, 0);
+        const result = new Map();
+        names.forEach(name => {
+          const detailItem = detailMap?.get(name);
+          const histItem = historyMap.get(name);
+          const itemGmv = detailItem?.gmv || histItem?.gmv || 0;
+          const itemCarry = detailItem?.carry || histItem?.carry || 0;
+          const itemOrders = detailItem?.gmv ? detailItem.gmv / 2980 : (histItem?.orders || 0);
+          const itemAttendance = detailItem?.attendance || histItem?.attendance || 0;
+          const shareValue = detailGmv && detailItem ? detailItem.gmv / detailGmv : (totalHistoryGmv && histItem ? histItem.gmv / totalHistoryGmv : 0);
+          const rawRate = itemCarry ? itemOrders / itemCarry : smoothedConversionRate;
+          const conversionRate = (itemOrders + smoothedConversionRate * 60) / Math.max(1, itemCarry + 60);
+          result.set(name, {
+          name,
+          up: itemCarry ? itemGmv / itemCarry : (carry ? gmv / carry : 0),
+          share: shareValue,
+          rawRate,
+          conversionRate,
+          attendanceRate: itemCarry ? itemAttendance / itemCarry : (carry ? attendance / carry : 0)
+        });
+      });
+        return result;
+      };
+      const channels = buildModelDimension(CHANNELS, detail?.channels, channelTotals);
+      const owners = buildModelDimension(OWNERS, detail?.owners, ownerTotals);
+      return {
+        gmv,
+        up: carry ? gmv / carry : 0,
+        liveShare,
+        chaseShare,
+        attendanceRate: carry ? attendance / carry : 0,
+        carry,
+        baseGmv,
+        carryScale,
+        weekdayFactor,
+        recentTrendFactor,
+        channelFactor,
+        attendanceFactor,
+        historicalConversionRate,
+        smoothedConversionRate,
+        predictedOrdersFromCarry,
+        channels,
+        owners,
+        baselineDays: detailDays || orderRows.length,
+        source: detail ? "明细表最近20个工作日" : "订单表最近历史日"
+      };
+    }
+    function predictedAttendanceCount(carry, name, model, dimension = "channels") {
+      const channelRate = model[dimension]?.get(name)?.attendanceRate || 0;
+      const rate = channelRate || model.attendanceRate || 0;
+      return Math.max(0, Math.round(number(carry) * rate));
+    }
+    function dimensionForecastRows(actualCarry, model, dimension) {
+      const actualRows = [...(actualCarry[dimension]?.values?.() || [])].map(compactMetric).filter(row => row.carry > 0);
+      const totalCarry = actualRows.reduce((sum, row) => sum + row.carry, 0);
+      if (!actualRows.length) return [];
+      const equalShare = 1 / actualRows.length;
+      const carryScale = model.carryScale || (model.carry ? totalCarry / model.carry : 1);
+      const scaledModelGmv = model.gmv || (model.baseGmv || 0) * carryScale;
+      const rows = actualRows.map(row => {
+        const modelItem = model[dimension]?.get(row.name);
+        const shareValue = modelItem?.share || (totalCarry ? row.carry / totalCarry : equalShare);
+        const conversionRate = modelItem?.conversionRate || model.smoothedConversionRate || 0;
+        const factor = Math.max(0.45, Math.min(2.2,
+          0.38 * Math.max(0.6, Math.min(1.5, model.weekdayFactor || 1))
+          + 0.32 * Math.max(0.6, Math.min(1.6, model.recentTrendFactor || 1))
+          + 0.18 * Math.max(0.55, Math.min(1.7, model.channelFactor || 1))
+          + 0.12 * Math.max(0.75, Math.min(1.35, model.attendanceFactor || 1))
+        ));
+        const predictedOrdersFromCarry = row.carry * conversionRate * factor;
+        const fallbackOrders = predictedOrderCount(scaledModelGmv * shareValue);
+        const orders = Math.max(0, Math.round(predictedOrdersFromCarry || fallbackOrders));
+        const gmv = orders * 2980;
+        const live = gmv * model.liveShare;
+        const attendance = predictedAttendanceCount(row.carry, row.name, model, dimension);
+        return {
+          ...row,
+          orders,
+          gmv,
+          live,
+          chase: Math.max(0, gmv - live),
+          appointments: row.carry * 0.5,
+          attendance,
+          up: row.carry ? gmv / row.carry : 0
+        };
+      });
+      const expectedOrders = predictedOrderCount(scaledModelGmv);
+      const totalOrders = rows.reduce((sum, row) => sum + row.orders, 0);
+      if (!totalOrders && expectedOrders && rows[0]) {
+        rows[0].orders = expectedOrders;
+        rows[0].gmv = expectedOrders * 2980;
+        rows[0].live = rows[0].gmv * model.liveShare;
+        rows[0].chase = Math.max(0, rows[0].gmv - rows[0].live);
+        rows[0].up = rows[0].carry ? rows[0].gmv / rows[0].carry : 0;
+      }
+      return rows;
+    }
+    function channelPredictionRows(actualCarry, model) {
+      return dimensionForecastRows(actualCarry, model, "channels");
+    }
+    function ownerPredictionRows(actualCarry, model) {
+      return dimensionForecastRows(actualCarry, model, "owners");
+    }
+    function predictionWithActualCarry(targetDate, actualCarry, detailPrediction, fallbackPrediction) {
+      const model = historicalPredictionModel(targetDate);
+      if (!actualCarry.carry) return detailPrediction || fallbackPrediction;
+      const channelRows = channelPredictionRows(actualCarry, model);
+      const ownerRows = ownerPredictionRows(actualCarry, model);
+      const channels = new Map(channelRows.map(row => [row.name, row]));
+      const owners = new Map(ownerRows.map(row => [row.name, row]));
+      const gmv = channelRows.reduce((sum, row) => sum + row.gmv, 0) || model.gmv || fallbackPrediction.gmv || 0;
+      const live = gmv * model.liveShare;
+      return {
+        ...(detailPrediction || fallbackPrediction),
+        carry: actualCarry.carry,
+        gmv,
+        live,
+        chase: Math.max(0, gmv - live),
+        up: actualCarry.carry ? gmv / actualCarry.carry : 0,
+        channels,
+        owners,
+        baselineDays: model.baselineDays,
+        source: model.source,
+        liveShare: model.liveShare,
+        chaseShare: model.chaseShare
+      };
+    }
+    function renderLiveChaseSummary(totalPredicted, targets) {
+      const labels = ["一档", "二档", "三档"];
+      const details = targets.map((target, index) => {
+        if (!target) return `${labels[index]}已达成`;
+        const gapPercent = Math.abs(totalPredicted - target) / target * 100;
+        return totalPredicted >= target
+          ? `${labels[index]}预计达成，超${currency(totalPredicted - target)}（${percent(gapPercent)}）`
+          : `${labels[index]}预计未达成，差${currency(target - totalPredicted)}（${percent(gapPercent)}）`;
+      });
+      document.getElementById("today-live-chase-summary").textContent = `今日直播+追单预计合计${currency(totalPredicted)}；${details.join("；")}。`;
+    }
+
+    function renderToday() {
+      const target = latestCarryDate() || latestOrderDate();
+      const month = monthForDate(target);
+      const actualCarry = actualCarryDay(target);
+      document.getElementById("today-month-gmv").textContent = currency(month.gmv);
+      const detailPrediction = predictTodayFromDetail(target);
+      const fallbackPrediction = predictDay(target);
+      const prediction = predictionWithActualCarry(target, actualCarry, detailPrediction, fallbackPrediction);
+      const model = historicalPredictionModel(target);
+      const chaseShare = prediction.chaseShare || model.chaseShare || (fallbackPrediction.gmv ? fallbackPrediction.chase / fallbackPrediction.gmv : 0);
+      const liveShare = prediction.liveShare || model.liveShare || Math.max(0, 1 - chaseShare);
+      const predictedChaseOrders = predictedOrderCount(prediction.gmv * chaseShare);
+      const predictedLiveOrders = predictedOrderCount(prediction.gmv * liveShare);
+      const predictedChaseGmv = predictedChaseOrders * 2980;
+      const predictedLiveGmv = predictedLiveOrders * 2980;
+      const predictedTotalGmv = predictedChaseGmv + predictedLiveGmv;
+      const predictedUp = prediction.carry ? predictedTotalGmv / prediction.carry : prediction.up;
+      const channelRows = [...prediction.channels.values()].filter(row => row.carry > 0 || row.gmv > 0).sort((a, b) => b.carry - a.carry);
+      const flowRows = channelRows.filter(row => !isMissingChannel(row.name));
+      document.getElementById("today-forecast-date").textContent = `${formatDate(target)}预测`;
+      document.getElementById("today-source-date-note").textContent = `当前预测对象为 ${formatDate(target)}，日期取承接表“添加时间”的最新一日。`;
+      document.getElementById("today-source-summary").textContent = `${formatDate(target)} 实际应销转 ${plainNumber(actualCarry.carry)} 人；模型综合承接规模、渠道结构、周几、近7/28日趋势和到课标签，历史基线 ${plainNumber(model.baselineDays)} 天。`;
+      document.getElementById("today-workday").textContent = workdayStatus(target);
+      document.getElementById("today-predicted-up").textContent = currency(predictedUp);
+      document.getElementById("today-predicted-carry").textContent = plainNumber(prediction.carry);
+      document.getElementById("today-donut-total").textContent = plainNumber(prediction.carry);
+      renderMonthlyTargets(month.gmv, target);
+      const workdayTargets = renderWorkdayTargets(target, month.gmv, predictedTotalGmv);
+      document.getElementById("today-chase-predicted-gmv").textContent = `${plainNumber(predictedChaseOrders)}单`;
+      document.getElementById("today-live-predicted-gmv").textContent = `${plainNumber(predictedLiveOrders)}单`;
+      document.getElementById("today-chase-predicted-text").textContent = `GMV ${exactCurrency(predictedChaseGmv)}`;
+      document.getElementById("today-live-predicted-text").textContent = `GMV ${exactCurrency(predictedLiveGmv)}`;
+      renderLiveChaseSummary(predictedLiveGmv + predictedChaseGmv, workdayTargets);
+      document.getElementById("today-channel-card-list").innerHTML = renderTodayChannelLegend(channelRows, prediction.carry);
+      document.getElementById("today-donut-note").textContent = `绝对数=应销转人数，百分比=占今日总应销转比例。当前总应销转 ${plainNumber(prediction.carry)}。`;
+      document.getElementById("today-channel-flow").innerHTML = flowRows.map(row => {
+        const carry = Math.max(0, Math.round(number(row.carry)));
+        const baseAppointments = row.appointments == null ? carry * 0.5 : number(row.appointments);
+        const baseAttendance = row.attendance == null ? baseAppointments * 0.5 : number(row.attendance);
+        const baseOrders = number(row.orders) || predictedOrderCount(row.gmv);
+        const predictedOrders = row.gmv > 0 ? Math.min(carry, Math.max(1, Math.round(baseOrders))) : 0;
+        const appointment = isInquiryChannel(row.name) ? 0 : Math.min(carry, Math.max(predictedOrders, Math.round(baseAppointments)));
+        const attendance = isInquiryChannel(row.name) ? 0 : Math.min(appointment, Math.max(predictedOrders, Math.round(baseAttendance || appointment * 0.5)));
+        const orders = isInquiryChannel(row.name) ? 0 : Math.min(attendance, predictedOrders);
+        const gmv = orders * 2980;
+        return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
+      }).join("");
+      document.getElementById("today-forecast-note").textContent = detailPrediction
+        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；GMV不再只取历史均值，而是综合承接规模系数${model.carryScale.toFixed(2)}、渠道结构系数${model.channelFactor.toFixed(2)}、周几系数${model.weekdayFactor.toFixed(2)}、近7/28日趋势${model.recentTrendFactor.toFixed(2)}和到课系数${model.attendanceFactor.toFixed(2)}；按2980元/单折算订单数。`
+        : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
+    }
+
+    function renderReview() {
+      const target = previousOrderDate(latestCarryDate() || latestOrderDate());
+      const day = actualDay(target);
+      const actualCarry = actualCarryDay(target);
+      const model = historicalPredictionModel(target);
+      const predictedChannelRows = channelPredictionRows(actualCarry, model);
+      const predictedOwnerRows = ownerPredictionRows(actualCarry, model);
+      const predictedGmv = predictedChannelRows.reduce((sum, row) => sum + row.gmv, 0) || model.gmv;
+      const prediction = {
+        key: formatDate(target),
+        label: formatDate(target),
+        date: target,
+        carry: actualCarry.carry,
+        orders: predictedOrderCount(predictedGmv),
+        gmv: predictedGmv,
+        live: predictedGmv * model.liveShare,
+        chase: predictedGmv * model.chaseShare,
+        conversion: predictedOrderCount(predictedGmv),
+        up: actualCarry.carry ? predictedGmv / actualCarry.carry : model.up,
+        channels: new Map(predictedChannelRows.map(row => [row.name, row])),
+        owners: new Map(predictedOwnerRows.map(row => [row.name, row])),
+        baselineDays: model.baselineDays
+      };
+      document.getElementById("review-date").textContent = `${formatDate(target)}复盘`;
+      document.getElementById("review-predicted-gmv").textContent = exactCurrency(prediction.gmv);
+      document.getElementById("review-predicted-up").textContent = currency(prediction.up);
+      document.getElementById("review-predicted-carry").textContent = plainNumber(prediction.carry);
+      document.getElementById("review-predicted-conversion").textContent = plainNumber(prediction.conversion);
+      document.getElementById("review-gmv").textContent = exactCurrency(day.gmv);
+      document.getElementById("review-up").textContent = currency(day.up);
+      document.getElementById("review-carry").textContent = plainNumber(day.carry);
+      document.getElementById("review-conv").textContent = plainNumber(day.conversion);
+      const predictRows = completeRows(prediction.channels, CHANNELS, "gmv");
+      const channelRows = completeRows(day.channels, CHANNELS, "gmv");
+      document.getElementById("review-predict-lines").innerHTML = renderReviewMetricLines(predictRows, prediction.gmv, { short: true, comparisonRows: channelRows, gapMode: "comparison-minus-row" });
+      document.getElementById("review-actual-lines").innerHTML = renderReviewMetricLines(channelRows, day.gmv, { short: true, comparisonRows: predictRows, gapMode: "row-minus-comparison", showOrders: true });
+      document.getElementById("review-channel-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "channels", CHANNELS), { short: true });
+      document.getElementById("review-owner-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "owners", OWNERS), { short: false });
+      const gap = day.gmv - prediction.gmv;
+      const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
+      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。预测值沿用今日预测模块的历史模型，实际值来自用户承接表和用户订单表；渠道与销售偏差均按实际GMV-预测GMV展示。`;
+    }
+
+    function renderWeekly() {
+      const rows = state.periods.week;
+      const current = latest("week");
+      const prev = previous("week");
+      document.getElementById("week-title").textContent = `${current.label}经营周报`;
+      document.getElementById("week-badge").textContent = `本周GMV ${currency(current.gmv)}`;
+      document.getElementById("week-kpis").innerHTML = [
+        statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
+        statCard("本周UP", currency(current.up), `较上周 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
+        statCard("承接人数", plainNumber(current.carry), `转化 ${plainNumber(current.conversion)} 人`),
+        statCard("历史位置", `${rows.findIndex(row => row.key === current.key) + 1}/${rows.length}`, "按时间序列")
+      ].join("");
+      const prior = rows.slice(Math.max(0, rows.length - 5), rows.length - 1);
+      const channelRows = completeRows(current.channels, CHANNELS, "gmv");
+      const ownerRows = completeRows(current.owners, OWNERS, "gmv");
+      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"));
+      document.getElementById("week-owner-rank").innerHTML = dimensionReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"));
+      document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
+      document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
+      document.getElementById("week-risk-text").textContent = "预测、到课、预约等过程字段暂未接入；当前注意项仅基于GMV、承接和转化。";
+      document.getElementById("week-summary").value = `本周GMV ${currency(current.gmv)}，UP ${currency(current.up)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。主要渠道为${channelRows.find(row => row.gmv > 0)?.name || "暂无"}，主要销售为${ownerRows.find(row => row.gmv > 0)?.name || "暂无"}。`;
+      renderTrend("week-trend", rows.slice(-6), "周实际GMV", 4);
+    }
+
+    function renderMonthly() {
+      const rows = state.periods.month;
+      const current = latest("month");
+      const prev = previous("month");
+      document.getElementById("month-title").textContent = `${current.label}经营月报`;
+      document.getElementById("month-kpis").innerHTML = [
+        statCard("净GMV", currency(current.gmv), `较上月 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
+        statCard("月度UP", currency(current.up), `较上月 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
+        statCard("总转化率", percent(current.carry ? current.conversion / current.carry * 100 : 0), `转化 ${plainNumber(current.conversion)} 人`),
+        statCard("退款金额 / 单量", `${currency(current.refundAmount)} / ${plainNumber(current.refunds)}`, "退款订单保留")
+      ].join("");
+      renderReportMonthlyTargets(current.gmv);
+      document.getElementById("month-source-stack").innerHTML = stackHtml(current.live, current.chase);
+      document.getElementById("month-source-total").textContent = currency(current.gmv);
+      const prior = rows.slice(Math.max(0, rows.length - 4), rows.length - 1);
+      const channelRows = completeRows(current.channels, CHANNELS, "gmv");
+      const owners = completeRows(current.owners, OWNERS, "gmv");
+      document.getElementById("month-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"));
+      document.getElementById("month-owner-top").innerHTML = dimensionReportHtml(owners, current.gmv, averageDimension(prior, "owners"));
+      const top = owners.find(row => row.gmv > 0);
+      document.getElementById("month-top-owner-title").textContent = top ? `${top.name}为何第一` : "暂无";
+      document.getElementById("month-top-owner-text").textContent = top ? `GMV ${currency(top.gmv)}，UP ${currency(top.up)}，直播/追单 ${percent(top.gmv ? top.live / top.gmv * 100 : 0)} / ${percent(top.gmv ? top.chase / top.gmv * 100 : 0)}。` : "暂无数据。";
+      document.getElementById("month-health").innerHTML = [
+        `<div class="health good"><span class="text-muted">承接人数</span><strong>${plainNumber(current.carry)}</strong><span>${changeText(current.carry, prev?.carry || 0)}</span></div>`,
+        `<div class="health good"><span class="text-muted">转化人数</span><strong>${plainNumber(current.conversion)}</strong><span>${changeText(current.conversion, prev?.conversion || 0)}</span></div>`,
+        `<div class="health"><span class="text-muted">订单量</span><strong>${plainNumber(current.orders)}</strong><span>${changeText(current.orders, prev?.orders || 0)}</span></div>`,
+        `<div class="health good"><span class="text-muted">直播转化GMV</span><strong>${currency(current.live)}</strong><span>${percent(current.gmv ? current.live / current.gmv * 100 : 0)}</span></div>`,
+        `<div class="health good"><span class="text-muted">追单GMV占比</span><strong>${percent(current.gmv ? current.chase / current.gmv * 100 : 0)}</strong><span>${currency(current.chase)}</span></div>`,
+        `<div class="health"><span class="text-muted">退款金额</span><strong>${currency(current.refundAmount)}</strong><span>${plainNumber(current.refunds)}单</span></div>`
+      ].join("");
+      document.getElementById("month-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
+      document.getElementById("month-judge-text").textContent = `本月GMV ${currency(current.gmv)}，较上月 ${changeText(current.gmv, prev?.gmv || 0)}，UP ${currency(current.up)}。`;
+      document.getElementById("month-risk-text").textContent = "目标、预约、到课、实验类字段暂未接入；当前风险仅基于承接、订单、GMV、退款和转化观察。";
+      document.getElementById("month-summary").value = `${current.label}净GMV为${currency(current.gmv)}，承接${plainNumber(current.carry)}，转化${plainNumber(current.conversion)}，订单${plainNumber(current.orders)}笔。主要渠道为${channelRows.find(row => row.gmv > 0)?.name || "暂无"}，主要销售为${owners.find(row => row.gmv > 0)?.name || "暂无"}。`;
+      renderTrend("month-trend", rows.slice(-6), "月实际GMV", 3);
+    }
+
+    function averageDimension(rows, key) {
+      const map = new Map();
+      rows.forEach(row => row[key].forEach((value, name) => {
+        if (!map.has(name)) map.set(name, { name, gmv: 0, count: 0 });
+        const item = map.get(name);
+        item.gmv += value.gmv;
+        item.count += 1;
+      }));
+      return [...map.values()].map(row => ({ name: row.name, gmv: row.count ? row.gmv / row.count : 0 }));
+    }
+
+    function renderTrend(id, rows, name, avgSize) {
+      const chart = chartFor(id);
+      const avg = rows.map((_, index) => {
+        const sample = rows.slice(Math.max(0, index - avgSize + 1), index + 1);
+        return sample.reduce((sum, row) => sum + row.gmv, 0) / Math.max(1, sample.length);
+      });
+      chart.setOption({
+        tooltip: { trigger: "axis", valueFormatter: currency },
+        legend: { top: 0, right: 0 },
+        grid: { left: 42, right: 18, top: 42, bottom: 26, containLabel: true },
+        color: ["#339cff", "#f3883b"],
+        xAxis: { type: "category", data: rows.map(row => row.label), axisLabel: { interval: 0 } },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: [
+          { name, type: "bar", barWidth: 16, data: rows.map(row => Math.round(row.gmv)) },
+          { name: `滚动${avgSize}期均值`, type: "line", smooth: true, data: avg.map(Math.round) }
+        ]
+      }, true);
+    }
+
+    function renderChannel() {
+      const monthRows = state.periods.month.slice(-6);
+      const current = latest("month");
+      const channels = allRows(current.channels).map(row => row.name).filter(Boolean);
+      if (!state.selectedChannel) state.selectedChannel = channels[0] || CHANNELS[0];
+      document.getElementById("channel-buttons").innerHTML = channels.map((channel, index) => `<button class="btn ${channel === state.selectedChannel ? "btn-primary" : ""} channel-btn" type="button" data-channel="${channel}">${shortChannel(channel)}</button>`).join("");
+      document.querySelectorAll(".channel-btn").forEach(button => button.addEventListener("click", () => {
+        state.selectedChannel = button.dataset.channel;
+        renderChannel();
+      }));
+      renderDimensionTrend("channel-gmv-trend", monthRows, channels.slice(0, 6), "gmv");
+      renderDimensionTrend("channel-up-trend", monthRows, channels.slice(0, 6), "up");
+      const selected = current.channels.get(state.selectedChannel) || { name: state.selectedChannel, carry: 0, gmv: 0, conversionUsers: new Set() };
+      const previousSelected = previous("month")?.channels.get(state.selectedChannel) || null;
+      document.getElementById("selected-channel").textContent = shortChannel(state.selectedChannel);
+      document.getElementById("selected-desc").textContent = selected.gmv ? "已有真实数据" : "暂无数据";
+      document.getElementById("selected-gmv").textContent = currency(selected.gmv);
+      document.getElementById("selected-gmv-delta").textContent = `较上月 ${changeText(selected.gmv, previousSelected?.gmv || 0)}`;
+      document.getElementById("selected-gmv-delta").className = changeClass(selected.gmv, previousSelected?.gmv || 0);
+      document.getElementById("selected-up").textContent = currency(selected.carry ? selected.gmv / selected.carry : 0);
+      document.getElementById("selected-up-delta").textContent = `较上月 ${changeText(selected.carry ? selected.gmv / selected.carry : 0, previousSelected?.carry ? previousSelected.gmv / previousSelected.carry : 0)}`;
+      document.getElementById("selected-carry").textContent = plainNumber(selected.carry);
+      renderSingleChannelTrend(monthRows, state.selectedChannel);
+      document.getElementById("channel-conclusion").innerHTML = `<strong>${shortChannel(state.selectedChannel)}：${selected.gmv ? "可分析渠道" : "暂无数据"}</strong><p>本月GMV ${currency(selected.gmv)}，承接 ${plainNumber(selected.carry)}，转化 ${plainNumber(selected.conversionUsers?.size || 0)}。</p>`;
+    }
+
+    function renderDimensionTrend(id, rows, names, metric) {
+      const chart = chartFor(id);
+      chart.setOption({
+        tooltip: { trigger: "axis", valueFormatter: currency },
+        legend: { top: 0, type: "scroll" },
+        grid: { left: 42, right: 18, top: 44, bottom: 26, containLabel: true },
+        color: COLORS,
+        xAxis: { type: "category", data: rows.map(row => row.label) },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: names.map(name => ({
+          name: shortChannel(name),
+          type: "line",
+          smooth: true,
+          data: rows.map(row => {
+            const item = row.channels.get(name);
+            if (!item) return 0;
+            return metric === "up" ? (item.carry ? item.gmv / item.carry : 0) : item.gmv;
+          })
+        }))
+      }, true);
+    }
+    function renderSingleChannelTrend(rows, channel) {
+      const chart = chartFor("single-channel-trend");
+      chart.setOption({
+        tooltip: { trigger: "axis", valueFormatter: currency },
+        legend: { top: 0, right: 0 },
+        grid: { left: 42, right: 18, top: 44, bottom: 26, containLabel: true },
+        color: ["#339cff", "#f3883b"],
+        xAxis: { type: "category", data: rows.map(row => row.label) },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: [
+          { name: "GMV", type: "bar", barWidth: 14, data: rows.map(row => row.channels.get(channel)?.gmv || 0) },
+          { name: "UP", type: "line", smooth: true, data: rows.map(row => {
+            const item = row.channels.get(channel);
+            return item?.carry ? item.gmv / item.carry : 0;
+          }) }
+        ]
+      }, true);
+    }
+
+    function renderSales() {
+      const month = latest("month");
+      const rows = allRows(month.owners).filter(row => row.name !== "待补录");
+      document.getElementById("sales-period").textContent = month.label;
+      document.getElementById("sales-table").innerHTML = rows.map((row, index) => {
+        const liveRate = row.gmv ? row.live / row.gmv * 100 : 0;
+        const chaseRate = row.gmv ? row.chase / row.gmv * 100 : 0;
+        return `<tr><td>${index + 1}</td><td>${row.name}</td><td class="text-end">${currency(row.gmv)}</td><td class="text-end">${currency(row.up)}</td><td class="text-end">${percent(liveRate)}</td><td class="text-end">${percent(chaseRate)}</td><td>-</td><td>${row.gmv ? "复盘高低表现与可复制动作" : "暂无数据"}</td></tr>`;
+      }).join("");
+      document.getElementById("sales-style").innerHTML = rows.slice(0, 6).map(row => `<div class="rank-row"><span>${row.name}</span><div class="stackbar">${stackHtml(row.live, row.chase, percent(row.gmv ? row.live / row.gmv * 100 : 0), percent(row.gmv ? row.chase / row.gmv * 100 : 0))}</div><span>${currency(row.gmv)}</span></div>`).join("");
+      document.getElementById("sales-channel-stack").innerHTML = rows.slice(0, 6).map(row => `<div class="rank-row"><span>${row.name}</span><div class="stackbar">${ownerChannelStack(row.name, month)}</div><span>${row.gmv ? "已归因" : "暂无"}</span></div>`).join("");
+    }
+
+    function chartFor(id) {
+      if (!state.charts[id]) state.charts[id] = echarts.init(document.getElementById(id));
+      return state.charts[id];
+    }
+    function resizeCharts() { Object.values(state.charts).forEach(chart => chart.resize()); }
+    function bindReviewOrderDrilldown() {
+      const container = document.getElementById("review-actual-lines");
+      if (!container || container.dataset.bound === "1") return;
+      container.dataset.bound = "1";
+      const toggleRow = row => {
+        const detail = row.querySelector("[data-review-order-detail]");
+        if (!detail) return;
+        const expanded = !row.classList.contains("expanded");
+        row.classList.toggle("expanded", expanded);
+        row.setAttribute("aria-expanded", String(expanded));
+        detail.hidden = !expanded;
+      };
+      container.addEventListener("click", event => {
+        if (event.target.closest("[data-review-order-detail]")) return;
+        const row = event.target.closest("[data-review-order-row]");
+        if (row && container.contains(row)) toggleRow(row);
+      });
+      container.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        const row = event.target.closest("[data-review-order-row]");
+        if (!row || !container.contains(row)) return;
+        event.preventDefault();
+        toggleRow(row);
+      });
+    }
+
+    function renderAll() {
+      renderToday();
+      renderReview();
+      renderWeekly();
+      renderMonthly();
+      renderChannel();
+      renderSales();
+      resizeCharts();
+    }
+
+    async function apiGet(path) {
+      const sep = path.includes("?") ? "&" : "?";
+      const response = await fetch(`${path}${sep}ts=${Date.now()}`, { cache: "no-store", headers: { "Cache-Control": "no-store" } });
+      if (!response.ok) throw new Error(await response.text());
+      return response.json();
+    }
+
+    async function loadDashboardData() {
+      const [payload, forecastDetails] = await Promise.all([
+        apiGet("./data/dashboard.json"),
+        apiGet("./data/forecast-details.json").catch(() => ({ rows: [] }))
+      ]);
+      normalizePayload(payload);
+      normalizeForecastDetails(forecastDetails);
+      const imports = payload.sync?.imports || [];
+      document.getElementById("data-status").textContent = imports.length ? `已同步：${imports.map(item => item.filename).join("、")}` : "源文件未变化，沿用最新同步结果";
+      document.getElementById("source-badge").textContent = `承接${state.carry.length} · 订单${state.orders.length}`;
+      renderAll();
+    }
+
+    window.addEventListener("resize", resizeCharts);
+    window.addEventListener("DOMContentLoaded", () => {
+      renderTabs();
+      bindReviewOrderDrilldown();
+      loadDashboardData().catch(error => {
+        document.getElementById("data-status").textContent = `读取静态数据失败：${error.message}`;
+        normalizePayload({ carry: [], orders: [] });
+        normalizeForecastDetails({ rows: [] });
+        renderAll();
+      });
+    });
+  </script>
+</body>
+</html>
