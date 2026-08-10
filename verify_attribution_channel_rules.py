@@ -102,6 +102,89 @@ order = first_order(store)
 assert order["channel"] == "一转", order
 
 store = make_store()
+store.import_carry_rows(
+    [
+        {
+            "unionid": "u-manual-missing",
+            "员工userid": "589",
+            "添加时间": "2026-07-01 09:00:00",
+            "所属员工": "589-祁春如",
+            "客户标签": "无业务渠道标签",
+        }
+    ],
+    filename="carry.xlsx",
+)
+store.import_order_rows(
+    [
+        {
+            "订单ID": "order-manual-missing",
+            "订单号": "no-manual-missing",
+            "微信id": "u-manual-missing",
+            "下单时间": "2026-07-02 10:00:00",
+            "实付金额": "2980",
+            "退款金额": "0",
+            "商品名称": "追单课",
+            "手动备注": "一转",
+        }
+    ],
+    filename="orders.xlsx",
+)
+order = first_order(store)
+assert order["channel"] == "一转", order
+assert order["attribution_type"] == "auto", order
+
+store = make_store()
+store.import_order_rows(
+    [
+        {
+            "订单ID": "order-manual-pending",
+            "订单号": "no-manual-pending",
+            "微信id": "u-manual-pending",
+            "下单时间": "2026-07-02 10:00:00",
+            "实付金额": "2980",
+            "退款金额": "0",
+            "商品名称": "追单课",
+            "手动备注": "一转",
+        }
+    ],
+    filename="orders.xlsx",
+)
+order = first_order(store)
+assert order["channel"] == "一转", order
+assert order["attribution_type"] == "pending", order
+
+store = make_store()
+store.import_carry_rows(
+    [
+        {
+            "unionid": "u-manual-explicit",
+            "员工userid": "589",
+            "添加时间": "2026-07-01 09:00:00",
+            "所属员工": "589-祁春如",
+            "客户标签": "2-视频号-下单",
+        }
+    ],
+    filename="carry.xlsx",
+)
+store.import_order_rows(
+    [
+        {
+            "订单ID": "order-manual-explicit",
+            "订单号": "no-manual-explicit",
+            "微信id": "u-manual-explicit",
+            "下单时间": "2026-07-02 10:00:00",
+            "实付金额": "2980",
+            "退款金额": "0",
+            "商品名称": "追单课",
+            "手动备注": "一转",
+        }
+    ],
+    filename="orders.xlsx",
+)
+order = first_order(store)
+assert order["channel"] == "2-视频号-下单", order
+
+store = make_store()
 store.import_order_rows(
     [
         {

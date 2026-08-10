@@ -907,6 +907,7 @@
       }));
       state.orders = (payload.orders || []).map(row => {
         const pending = text(row.attribution_type) === "pending";
+        const rowChannel = text(row.channel);
         const paid = number(row.paid_amount);
         const refund = number(row.refund_amount);
         return {
@@ -923,7 +924,7 @@
           product: text(row.product_name),
           scenario: text(row.scenario) || (text(row.product_name).includes("直播") ? "直播间转化" : "追单转化"),
           owner: normalizeOwnerGroup(row.owner_name, pending),
-          channel: pending ? "待补录" : (text(row.channel) || "待补录"),
+          channel: pending && (!rowChannel || rowChannel === "待归因") ? "待补录" : (rowChannel || "待补录"),
           attribution_type: text(row.attribution_type),
           scope: orderScope(row),
           effective: refund < paid

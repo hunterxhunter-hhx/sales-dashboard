@@ -31,6 +31,8 @@ CHANNEL_RULES = [
     ("2-视频号-下单", "2-视频号-下单"),
 ]
 
+MISSING_CHANNELS = {"", "缺失渠道", "待归因", "待补录"}
+
 SOURCE_FILE_SPECS = [
     ("carry", "用户承接表.xlsx"),
     ("orders", "用户订单表.xlsx"),
@@ -129,12 +131,19 @@ def classify_scenario(product_name: Any) -> str:
 
 def attribution_channel(channel: Any, customer_tags: Any) -> str:
     value = safe_text(channel)
-    if value and value not in {"缺失渠道", "待归因", "待补录"}:
+    if value and value not in MISSING_CHANNELS:
         return value
     tags = safe_text(customer_tags)
     if "一转" in tags:
         return "一转"
     return value or classify_channel(tags)
+
+
+def apply_manual_remark_channel(channel: Any, manual_remark: Any) -> str:
+    value = safe_text(channel)
+    if value not in MISSING_CHANNELS:
+        return value
+    return safe_text(manual_remark) or value
 
 
 def is_activation_promoter(value: Any) -> bool:
@@ -176,6 +185,7 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
     product_name = safe_text(pick(row, ["商品名称", "课程名称"]))
     promoter = safe_text(pick(row, ["推广员"]))
     promoter_modified = safe_text(pick(row, ["推广员（修改后）", "推广员(修改后)", "推广员修改后"]))
+    manual_remark = safe_text(pick(row, ["手动备注"]))
     return {
         "order_id": order_id or order_no,
         "order_no": order_no,
@@ -190,6 +200,7 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
         "scenario": classify_scenario(product_name),
         "promoter": promoter,
         "promoter_modified": promoter_modified,
+        "manual_remark": manual_remark,
         "raw_json": json.dumps(row, ensure_ascii=False, default=str),
     }
 
@@ -265,6 +276,7 @@ class DashboardStore:
                     scenario TEXT,
                     promoter TEXT,
                     promoter_modified TEXT,
+                    manual_remark TEXT,
                     raw_json TEXT,
                     batch_id INTEGER,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -303,6 +315,7 @@ class DashboardStore:
             )
             self._ensure_column(conn, "order_records", "promoter", "TEXT")
             self._ensure_column(conn, "order_records", "promoter_modified", "TEXT")
+            self._ensure_column(conn, "order_records", "manual_remark", "TEXT")
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
         columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -558,9 +571,9 @@ class DashboardStore:
                     INSERT INTO order_records(
                         order_id, order_no, wxid, user_id, order_time, paid_amount,
                         refund_amount, net_sales, order_status, product_name, scenario,
-                        promoter, promoter_modified, raw_json, batch_id
+                        promoter, promoter_modified, manual_remark, raw_json, batch_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(order_id) DO UPDATE SET
                         order_no = excluded.order_no,
                         wxid = excluded.wxid,
@@ -574,6 +587,7 @@ class DashboardStore:
                         scenario = excluded.scenario,
                         promoter = excluded.promoter,
                         promoter_modified = excluded.promoter_modified,
+                        manual_remark = excluded.manual_remark,
                         raw_json = excluded.raw_json,
                         batch_id = excluded.batch_id,
                         updated_at = CURRENT_TIMESTAMP
@@ -592,6 +606,7 @@ class DashboardStore:
                         item["scenario"],
                         item["promoter"],
                         item["promoter_modified"],
+                        item["manual_remark"],
                         item["raw_json"],
                         batch_id,
                     ),
@@ -657,12 +672,13 @@ class DashboardStore:
                         (order["wxid"], order["order_time"] or "9999-12-31 23:59:59"),
                     ).fetchone()
                     if carry:
+                        channel = attribution_channel(carry["channel"], carry["customer_tags"])
                         attribution = {
                             "union_id": carry["union_id"],
                             "carry_record_id": carry["id"],
                             "employee_user_id": carry["employee_user_id"],
                             "owner_name": carry["owner_name"],
-                            "channel": attribution_channel(carry["channel"], carry["customer_tags"]),
+                            "channel": apply_manual_remark_channel(channel, order["manual_remark"]),
                             "attribution_type": "auto",
                             "reason": "最近一次添加自动归因",
                         }
@@ -682,7 +698,7 @@ class DashboardStore:
                             "carry_record_id": None,
                             "employee_user_id": "",
                             "owner_name": "待归因",
-                            "channel": "待归因",
+                            "channel": apply_manual_remark_channel("待归因", order["manual_remark"]),
                             "attribution_type": "pending",
                             "reason": "未找到订单时间之前的承接记录",
                         }
