@@ -285,6 +285,7 @@
       height: 24px;
       overflow: visible;
       background: rgba(26, 28, 31, 0.08);
+      position: relative;
     }
     .segmented-report-bar {
       height: 100%;
@@ -308,6 +309,57 @@
       font-size: 12px;
       font-weight: 650;
       white-space: nowrap;
+    }
+    .segmented-tooltip {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 8px);
+      z-index: 50;
+      min-width: 236px;
+      padding: 9px 10px;
+      border-radius: 11px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+      opacity: 0;
+      transform: translateY(-4px);
+      pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+    }
+    .segmented-tooltip::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      top: -6px;
+      width: 12px;
+      height: 12px;
+      background: rgba(15, 23, 42, 0.92);
+      transform: rotate(45deg);
+    }
+    .segmented-tooltip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 12px;
+      line-height: 1.7;
+      white-space: nowrap;
+    }
+    .segmented-tooltip-row i {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex: 0 0 auto;
+    }
+    .segmented-tooltip-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(255, 255, 255, 0.78);
+    }
+    .segmented-report-track:hover .segmented-tooltip {
+      opacity: 1;
+      transform: translateY(0);
     }
     .positive { color: var(--green); }
     .negative { color: var(--red); }
@@ -1205,7 +1257,7 @@
       const width = gmv ? share(gmv, max) : 0;
       const liveWidth = total ? live / total * 100 : 0;
       const chaseWidth = total ? chase / total * 100 : 0;
-      return `<div class="segmented-report-bar ${gmv ? "" : "is-zero"}" style="width:${width}%"><i class="live" style="width:${liveWidth}%">直播 ${plainNumber(liveOrders)}单</i><i class="chase" style="width:${chaseWidth}%">追单 ${plainNumber(chaseOrders)}单</i></div>`;
+      return `<div class="segmented-report-bar ${gmv ? "" : "is-zero"}" style="width:${width}%"><i class="live" style="width:${liveWidth}%" aria-label="直播"></i><i class="chase" style="width:${chaseWidth}%" aria-label="追单"></i></div><div class="segmented-tooltip"><div class="segmented-tooltip-row"><span class="segmented-tooltip-label"><i class="live"></i>直播</span><strong>${percent(total ? live / total * 100 : 0)} · ${plainNumber(liveOrders)}单 · GMV ${exactCurrency(live)}</strong></div><div class="segmented-tooltip-row"><span class="segmented-tooltip-label"><i class="chase"></i>追单</span><strong>${percent(total ? chase / total * 100 : 0)} · ${plainNumber(chaseOrders)}单 · GMV ${exactCurrency(chase)}</strong></div></div>`;
     }
     function renderSegmentedReportHtml(rows, total, baselineRows = [], options = {}) {
       if (!rows.length) return `<div class="sub">暂无数据</div>`;
@@ -1222,7 +1274,7 @@
         const rowClass = options.showOrders ? "compare-line is-clickable" : "";
         const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
         const hint = options.showOrders ? `<span>点击查看订单号</span>` : "";
-        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${label(row.name)}</strong><div class="track segmented-report-track">${segmentedLiveChaseBar(row, max)}<i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>${liveChaseOrderText(row)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
+        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${label(row.name)}</strong><div class="track segmented-report-track">${segmentedLiveChaseBar(row, max)}</div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>${liveChaseOrderText(row)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
       }).join("");
     }
     function stackHtml(left, right, leftName = "直播", rightName = "追单") {

@@ -43,6 +43,12 @@ dimension_report = function_body("renderSegmentedReportHtml")
 assert "showOrders" in dimension_report, "segmented report renderer should support order drilldown"
 assert "data-review-order-row" in dimension_report, "segmented rows should become clickable when order drilldown is enabled"
 assert "review-order-detail" in dimension_report, "segmented rows should render hidden order detail"
+assert "history-mark" not in dimension_report, "weekly segmented bars should not show the old black history marker"
+
+segmented_bar = function_body("segmentedLiveChaseBar")
+assert "segmented-tooltip" in segmented_bar, "segmented bars should reveal live/chase details on hover"
+assert 'aria-label="直播"></i>' in segmented_bar, "live segment should be color-only, not text-filled"
+assert 'aria-label="追单"></i>' in segmented_bar, "chase segment should be color-only, not text-filled"
 
 selector = function_body("renderWeekSelector")
 assert "week-selector" in selector, "selector renderer should target #week-selector"
