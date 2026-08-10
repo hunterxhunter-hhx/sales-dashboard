@@ -115,6 +115,8 @@ def classify_channel(tags: Any) -> str:
     text = safe_text(tags)
     hits = [label for needle, label in CHANNEL_RULES if needle in text]
     if not hits:
+        if "一转" in text:
+            return "一转"
         return "缺失渠道"
     if len(hits) > 1:
         return "冲突渠道"
@@ -123,6 +125,20 @@ def classify_channel(tags: Any) -> str:
 
 def classify_scenario(product_name: Any) -> str:
     return "直播间转化" if "直播" in safe_text(product_name) else "追单转化"
+
+
+def attribution_channel(channel: Any, customer_tags: Any) -> str:
+    value = safe_text(channel)
+    if value and value not in {"缺失渠道", "待归因", "待补录"}:
+        return value
+    tags = safe_text(customer_tags)
+    if "一转" in tags:
+        return "一转"
+    return value or classify_channel(tags)
+
+
+def is_activation_promoter(value: Any) -> bool:
+    return safe_text(value) == "常丁健"
 
 
 def normalize_carry_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -158,6 +174,8 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
     paid_amount = to_float(pick(row, ["实付金额", "支付金额", "订单实付金额"]))
     refund_amount = to_float(pick(row, ["退款金额", "售后退款金额"]))
     product_name = safe_text(pick(row, ["商品名称", "课程名称"]))
+    promoter = safe_text(pick(row, ["推广员"]))
+    promoter_modified = safe_text(pick(row, ["推广员（修改后）", "推广员(修改后)", "推广员修改后"]))
     return {
         "order_id": order_id or order_no,
         "order_no": order_no,
@@ -170,6 +188,8 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
         "order_status": safe_text(pick(row, ["订单状态"])),
         "product_name": product_name,
         "scenario": classify_scenario(product_name),
+        "promoter": promoter,
+        "promoter_modified": promoter_modified,
         "raw_json": json.dumps(row, ensure_ascii=False, default=str),
     }
 
@@ -243,6 +263,8 @@ class DashboardStore:
                     order_status TEXT,
                     product_name TEXT,
                     scenario TEXT,
+                    promoter TEXT,
+                    promoter_modified TEXT,
                     raw_json TEXT,
                     batch_id INTEGER,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -279,6 +301,13 @@ class DashboardStore:
                 );
                 """
             )
+            self._ensure_column(conn, "order_records", "promoter", "TEXT")
+            self._ensure_column(conn, "order_records", "promoter_modified", "TEXT")
+
+    def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+        columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if column not in columns:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def source_dir(self) -> Path:
         return self.root_dir / "data" / "source"
@@ -444,30 +473,68 @@ class DashboardStore:
                 if not item["union_id"] or not item["employee_user_id"] or not item["add_time"]:
                     result["errors"] += 1
                     continue
-                cursor = conn.execute(
+                existing = conn.execute(
                     """
-                    INSERT OR IGNORE INTO carry_records(
-                        union_id, employee_user_id, add_time, owner_raw, owner_name,
-                        channel, customer_tags, raw_json, batch_id
-                    )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    SELECT owner_raw, owner_name, channel, customer_tags, raw_json
+                    FROM carry_records
+                    WHERE union_id = ? AND employee_user_id = ? AND add_time = ?
                     """,
                     (
                         item["union_id"],
                         item["employee_user_id"],
                         item["add_time"],
-                        item["owner_raw"],
-                        item["owner_name"],
-                        item["channel"],
-                        item["customer_tags"],
-                        item["raw_json"],
-                        batch_id,
                     ),
-                )
-                if cursor.rowcount:
-                    result["inserted"] += 1
+                ).fetchone()
+                if existing:
+                    changed = any(
+                        safe_text(existing[column]) != safe_text(item[column])
+                        for column in ["owner_raw", "owner_name", "channel", "customer_tags", "raw_json"]
+                    )
+                    if changed:
+                        conn.execute(
+                            """
+                            UPDATE carry_records
+                            SET owner_raw = ?, owner_name = ?, channel = ?, customer_tags = ?,
+                                raw_json = ?, batch_id = ?
+                            WHERE union_id = ? AND employee_user_id = ? AND add_time = ?
+                            """,
+                            (
+                                item["owner_raw"],
+                                item["owner_name"],
+                                item["channel"],
+                                item["customer_tags"],
+                                item["raw_json"],
+                                batch_id,
+                                item["union_id"],
+                                item["employee_user_id"],
+                                item["add_time"],
+                            ),
+                        )
+                        result["updated"] += 1
+                    else:
+                        result["duplicates"] += 1
                 else:
-                    result["duplicates"] += 1
+                    conn.execute(
+                        """
+                        INSERT INTO carry_records(
+                            union_id, employee_user_id, add_time, owner_raw, owner_name,
+                            channel, customer_tags, raw_json, batch_id
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            item["union_id"],
+                            item["employee_user_id"],
+                            item["add_time"],
+                            item["owner_raw"],
+                            item["owner_name"],
+                            item["channel"],
+                            item["customer_tags"],
+                            item["raw_json"],
+                            batch_id,
+                        ),
+                    )
+                    result["inserted"] += 1
             self._finish_batch(conn, batch_id, result)
         self.recompute_attributions()
         return result
@@ -491,9 +558,9 @@ class DashboardStore:
                     INSERT INTO order_records(
                         order_id, order_no, wxid, user_id, order_time, paid_amount,
                         refund_amount, net_sales, order_status, product_name, scenario,
-                        raw_json, batch_id
+                        promoter, promoter_modified, raw_json, batch_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(order_id) DO UPDATE SET
                         order_no = excluded.order_no,
                         wxid = excluded.wxid,
@@ -505,6 +572,8 @@ class DashboardStore:
                         order_status = excluded.order_status,
                         product_name = excluded.product_name,
                         scenario = excluded.scenario,
+                        promoter = excluded.promoter,
+                        promoter_modified = excluded.promoter_modified,
                         raw_json = excluded.raw_json,
                         batch_id = excluded.batch_id,
                         updated_at = CURRENT_TIMESTAMP
@@ -521,6 +590,8 @@ class DashboardStore:
                         item["order_status"],
                         item["product_name"],
                         item["scenario"],
+                        item["promoter"],
+                        item["promoter_modified"],
                         item["raw_json"],
                         batch_id,
                     ),
@@ -591,9 +662,19 @@ class DashboardStore:
                             "carry_record_id": carry["id"],
                             "employee_user_id": carry["employee_user_id"],
                             "owner_name": carry["owner_name"],
-                            "channel": carry["channel"],
+                            "channel": attribution_channel(carry["channel"], carry["customer_tags"]),
                             "attribution_type": "auto",
                             "reason": "最近一次添加自动归因",
+                        }
+                    elif is_activation_promoter(order["promoter_modified"] or order["promoter"]):
+                        attribution = {
+                            "union_id": order["wxid"],
+                            "carry_record_id": None,
+                            "employee_user_id": "",
+                            "owner_name": "激活组",
+                            "channel": "激活组",
+                            "attribution_type": "activation_group",
+                            "reason": "待补录订单推广员（修改后）=常丁健",
                         }
                     else:
                         attribution = {

@@ -796,7 +796,7 @@
       charts: {}
     };
 
-    const CHANNELS = ["1-挂图承接【私域部】", "2-公号-引流", "2-企微-回捞", "2-企微-询课", "2-有赞-下单", "2-视频号-下单", "缺失渠道", "冲突渠道", "待补录"];
+    const CHANNELS = ["1-挂图承接【私域部】", "2-公号-引流", "2-企微-回捞", "2-企微-询课", "2-有赞-下单", "2-视频号-下单", "一转", "激活组", "缺失渠道", "冲突渠道", "待补录"];
     const CORE_OWNERS = ["黄依婷", "徐佳莹", "赵宇欣", "石玉", "祁春如", "万雪莲", "吴秋禅", "辛雨薇"];
     const OWNERS = [...CORE_OWNERS, "激活组", "待补录"];
     const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
@@ -1129,6 +1129,8 @@
       if (name.includes("询课")) return "询课";
       if (name.includes("有赞")) return "有赞";
       if (name.includes("视频号")) return "视频号";
+      if (name.includes("一转")) return "一转";
+      if (name.includes("激活组")) return "激活组";
       if (name.includes("待")) return "待补录";
       return name.slice(0, 2);
     }
