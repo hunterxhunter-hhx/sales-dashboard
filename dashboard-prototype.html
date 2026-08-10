@@ -882,6 +882,51 @@
     const OWNERS = [...CORE_OWNERS, "激活组", "待补录"];
     const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
     const MONTH_TARGETS = [1000000, 1500000, 2000000];
+    const ORDER_UNIT_PRICE = 1980;
+    const CHANNEL_ORDER_PROBABILITY = {
+      "2-企微-回捞": [
+        { bucket: "0", probabilities: { 0: 1 } },
+        { bucket: "0-10", probabilities: { 0: 0.926, 1: 0.04, 2: 0.034 } },
+        { bucket: "11-50", probabilities: { 0: 0.744, 1: 0.207, 2: 0.049 } },
+        { bucket: "51-100", probabilities: { 0: 0.25, 1: 0.294, 2: 0.265, 3: 0.125, 4: 0.059, 5: 0.007 } },
+        { bucket: "101-200", probabilities: { 0: 0.305, 1: 0.247, 2: 0.195, 3: 0.156, 4: 0.058, 5: 0.039 } },
+        { bucket: "201-400", probabilities: { 0: 0.526, 1: 0.263, 2: 0.184, 3: 0.026 } },
+        { bucket: "401+", probabilities: { 0: 0.1, 1: 0.3, 2: 0.2, 3: 0.2, 4: 0.1, 8: 0.1 } }
+      ],
+      "2-公号-引流": [
+        { bucket: "0", probabilities: { 0: 1 } },
+        { bucket: "0-10", probabilities: { 0: 0.958, 1: 0.042 } },
+        { bucket: "11-50", probabilities: { 0: 0.917, 1: 0.074, 3: 0.009 } },
+        { bucket: "51-100", probabilities: { 0: 0.738, 1: 0.238, 2: 0.024 } },
+        { bucket: "101-200", probabilities: { 0: 0.649, 1: 0.162, 2: 0.135, 3: 0.054 } },
+        { bucket: "201-400", probabilities: { 0: 0.182, 1: 0.364, 2: 0.273, 3: 0.091, 4: 0.091 } },
+        { bucket: "401+", probabilities: { 0: 0.154, 1: 0.231, 2: 0.308, 3: 0.077, 4: 0.077, 5: 0.077, 6: 0.077 } }
+      ],
+      "1-挂图承接【私域部】": [
+        { bucket: "0", probabilities: { 0: 1 } },
+        { bucket: "0-10", probabilities: { 0: 1 } },
+        { bucket: "11-50", probabilities: { 0: 0.92, 1: 0.065, 2: 0.01, 3: 0.005 } },
+        { bucket: "51-100", probabilities: { 0: 0.858, 1: 0.117, 2: 0.025 } },
+        { bucket: "101-200", probabilities: { 0: 0.75, 1: 0.208, 2: 0.021, 3: 0.021 } },
+        { bucket: "201-400", probabilities: { 0: 0.676, 1: 0.206, 2: 0.118 } },
+        { bucket: "401+", probabilities: { 0: 0.765, 1: 0.118, 2: 0.059, 4: 0.059 } }
+      ],
+      "2-有赞-下单": [
+        { bucket: "0", probabilities: { 0: 1 } },
+        { bucket: "0-10", probabilities: { 0: 0.917, 1: 0.07, 2: 0.009, 3: 0.004 } },
+        { bucket: "11-50", probabilities: { 0: 0.819, 1: 0.081, 2: 0.06, 3: 0.04 } },
+        { bucket: "51-100", probabilities: { 0: 0.25, 1: 0.317, 2: 0.167, 3: 0.1, 4: 0.167 } },
+        { bucket: "101-200", probabilities: { 1: 0.5, 2: 0.2, 3: 0.15, 4: 0.15 } },
+        { bucket: "201-400", probabilities: { 1: 0.1, 2: 0.2, 3: 0.3, 4: 0.1, 5: 0.3 } }
+      ],
+      "2-视频号-下单": [
+        { bucket: "0", probabilities: { 0: 1 } },
+        { bucket: "0-10", probabilities: { 0: 0.98, 1: 0.02 } },
+        { bucket: "11-50", probabilities: { 0: 0.4, 1: 0.4, 2: 0.2 } },
+        { bucket: "51-100", probabilities: { 0: 0.5, 1: 0.3, 2: 0.2 } },
+        { bucket: "201-400", probabilities: { 1: 0.1, 2: 0.1, 3: 0.143, 4: 0.143, 5: 0.143, 6: 0.186, 7: 0.186 } }
+      ]
+    };
 
     function text(value) { return String(value ?? "").trim(); }
     function number(value) {
@@ -1801,8 +1846,54 @@
         document.getElementById(`month-target-gap-${tier}`).textContent = currentGmv >= target ? "已达成" : `还差${exactCurrency(target - currentGmv)}`;
       });
     }
+    function parseCarryBucket(bucket) {
+      const raw = text(bucket);
+      if (!raw) return null;
+      const point = raw.match(/^(\d+)$/);
+      if (point) {
+        const value = Number(point[1]);
+        return { min: value, max: value };
+      }
+      const range = raw.match(/^(\d+)\s*[-~至到]\s*(\d+)$/);
+      if (range) return { min: Number(range[1]), max: Number(range[2]) };
+      const plus = raw.match(/^(\d+)\s*\+$/);
+      if (plus) return { min: Number(plus[1]), max: Infinity };
+      return null;
+    }
+    function probabilityChannelName(channel) {
+      const raw = text(channel);
+      if (CHANNEL_ORDER_PROBABILITY[raw]) return raw;
+      const short = shortChannel(raw);
+      return CHANNELS.find(name => CHANNEL_ORDER_PROBABILITY[name] && shortChannel(name) === short) || "";
+    }
+    function probabilityExpectedOrders(channel, carry) {
+      const name = probabilityChannelName(channel);
+      const buckets = CHANNEL_ORDER_PROBABILITY[name];
+      const carryCount = Math.max(0, Math.round(number(carry)));
+      if (!buckets) return null;
+      const bucket = buckets.find(item => {
+        const parsed = parseCarryBucket(item.bucket);
+        return parsed && carryCount >= parsed.min && carryCount <= parsed.max;
+      });
+      if (!bucket) return null;
+      let expected = 0;
+      let probabilityTotal = 0;
+      Object.entries(bucket.probabilities || {}).forEach(([orderCount, probability]) => {
+        const orders = number(orderCount);
+        const rawProbability = number(probability);
+        const normalizedProbability = rawProbability > 1 ? rawProbability / 100 : rawProbability;
+        if (!Number.isFinite(orders) || !Number.isFinite(normalizedProbability) || normalizedProbability <= 0) return;
+        expected += orders * normalizedProbability;
+        probabilityTotal += normalizedProbability;
+      });
+      return probabilityTotal ? expected / probabilityTotal : null;
+    }
+    function probabilityPredictedOrders(channel, carry) {
+      const expected = probabilityExpectedOrders(channel, carry);
+      return expected == null ? null : Math.max(0, Math.round(expected));
+    }
     function predictedOrderCount(gmv) {
-      return Math.max(0, Math.round(number(gmv) / 2980));
+      return Math.max(0, Math.round(number(gmv) / ORDER_UNIT_PRICE));
     }
     function dailyRequiredTargets(currentGmv, targetDate) {
       const days = remainingWorkdays(targetDate);
@@ -1875,7 +1966,7 @@
       const baseGmv = detailGmv || rollingGmv || fallbackGmv;
       const carry = detail?.carry || avgCarry(periodRows) || 0;
       const attendance = detail?.attendance || periodRows.reduce((sum, row) => sum + (row.attendance || 0), 0) / Math.max(1, periodRows.length);
-      const historicalOrders = detail?.gmv ? detail.gmv / 2980 : periodRows.reduce((sum, row) => sum + (row.orders || 0), 0) / Math.max(1, periodRows.length);
+      const historicalOrders = detail?.gmv ? detail.gmv / ORDER_UNIT_PRICE : periodRows.reduce((sum, row) => sum + (row.orders || 0), 0) / Math.max(1, periodRows.length);
       const targetCarry = actualCarry.carry || carry || 0;
       const historicalAttendanceRate = carry ? attendance / carry : 0;
       const targetAttendanceRate = targetCarry ? (actualCarry.attendance || 0) / targetCarry : historicalAttendanceRate;
@@ -1909,7 +2000,7 @@
         2.2
       );
       const predictedOrdersFromCarry = targetCarry * smoothedConversionRate * nonCarryFactor;
-      const gmv = Math.max(0, Math.round(predictedOrdersFromCarry)) * 2980;
+      const gmv = Math.max(0, Math.round(predictedOrdersFromCarry)) * ORDER_UNIT_PRICE;
       const buildModelDimension = (names, detailMap, historyMap) => {
         const totalHistoryGmv = [...historyMap.values()].reduce((sum, row) => sum + row.gmv, 0);
         const result = new Map();
@@ -1918,7 +2009,7 @@
           const histItem = historyMap.get(name);
           const itemGmv = detailItem?.gmv || histItem?.gmv || 0;
           const itemCarry = detailItem?.carry || histItem?.carry || 0;
-          const itemOrders = detailItem?.gmv ? detailItem.gmv / 2980 : (histItem?.orders || 0);
+          const itemOrders = detailItem?.gmv ? detailItem.gmv / ORDER_UNIT_PRICE : (histItem?.orders || 0);
           const itemAttendance = detailItem?.attendance || histItem?.attendance || 0;
           const shareValue = detailGmv && detailItem ? detailItem.gmv / detailGmv : (totalHistoryGmv && histItem ? histItem.gmv / totalHistoryGmv : 0);
           const rawRate = itemCarry ? itemOrders / itemCarry : smoothedConversionRate;
@@ -1986,10 +2077,11 @@
           + 0.18 * Math.max(0.55, Math.min(1.7, model.channelFactor || 1))
           + 0.12 * Math.max(0.75, Math.min(1.35, model.attendanceFactor || 1))
         ));
+        const probabilityOrders = dimension === "channels" ? probabilityPredictedOrders(row.name, row.carry) : null;
         const predictedOrdersFromCarry = row.carry * conversionRate * factor;
         const fallbackOrders = predictedOrderCount(scaledModelGmv * shareValue);
-        const orders = Math.max(0, Math.round(predictedOrdersFromCarry || fallbackOrders));
-        const gmv = orders * 2980;
+        const orders = Math.max(0, Math.round(probabilityOrders ?? (predictedOrdersFromCarry || fallbackOrders)));
+        const gmv = orders * ORDER_UNIT_PRICE;
         const attendance = predictedAttendanceCount(row.carry, row.name, model, dimension);
         return {
           ...row,
@@ -2008,7 +2100,7 @@
       const totalOrders = rows.reduce((sum, row) => sum + row.orders, 0);
       if (!totalOrders && expectedOrders && rows[0]) {
         rows[0].orders = expectedOrders;
-        rows[0].gmv = expectedOrders * 2980;
+        rows[0].gmv = expectedOrders * ORDER_UNIT_PRICE;
         rows[0].up = rows[0].carry ? rows[0].gmv / rows[0].carry : 0;
       }
       return splitForecastRows(rows, model, dimension);
@@ -2022,9 +2114,9 @@
         const liveRate = Math.max(0, Math.min(1, rawLiveRate));
         const liveOrders = Math.min(orders, Math.max(0, Math.round(orders * liveRate)));
         const chaseOrders = Math.max(0, orders - liveOrders);
-        const live = liveOrders * 2980;
-        const chase = chaseOrders * 2980;
-        const gmv = (liveOrders + chaseOrders) * 2980;
+        const live = liveOrders * ORDER_UNIT_PRICE;
+        const chase = chaseOrders * ORDER_UNIT_PRICE;
+        const gmv = (liveOrders + chaseOrders) * ORDER_UNIT_PRICE;
         return {
           ...row,
           orders,
@@ -2043,17 +2135,78 @@
     function splitOwnerForecastRows(rows, model) {
       return splitForecastRows(rows, model, "owners");
     }
+    function allocateInteger(total, items, weightFn) {
+      const count = Math.max(0, Math.round(number(total)));
+      if (!items.length || !count) return items.map(() => 0);
+      const weights = items.map(item => Math.max(0, number(weightFn(item))));
+      const weightTotal = weights.reduce((sum, value) => sum + value, 0);
+      if (!weightTotal) {
+        const base = Math.floor(count / items.length);
+        const result = items.map(() => base);
+        for (let index = 0; index < count - base * items.length; index += 1) result[index] += 1;
+        return result;
+      }
+      const raw = weights.map(value => value / weightTotal * count);
+      const result = raw.map(Math.floor);
+      let remainder = count - result.reduce((sum, value) => sum + value, 0);
+      raw
+        .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+        .sort((a, b) => b.fraction - a.fraction)
+        .forEach(item => {
+          if (remainder <= 0) return;
+          result[item.index] += 1;
+          remainder -= 1;
+        });
+      return result;
+    }
+    function redistributeOwnerForecastFromChannels(actualCarry, model, channelRows) {
+      const ownerMap = new Map();
+      const ownerChannelRows = [...(actualCarry.ownerChannels?.values?.() || [])].filter(row => number(row.carry) > 0);
+      channelRows.forEach(channelRow => {
+        const rows = ownerChannelRows.filter(row => row.channel === channelRow.name);
+        if (!rows.length) return;
+        const liveAllocations = allocateInteger(channelRow.liveOrders, rows, row => row.carry);
+        const chaseAllocations = allocateInteger(channelRow.chaseOrders, rows, row => row.carry);
+        rows.forEach((row, index) => {
+          if (!ownerMap.has(row.owner)) ownerMap.set(row.owner, { name: row.owner, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0 });
+          const owner = ownerMap.get(row.owner);
+          const liveOrders = liveAllocations[index] || 0;
+          const chaseOrders = chaseAllocations[index] || 0;
+          const orders = liveOrders + chaseOrders;
+          owner.carry += number(row.carry);
+          owner.orders += orders;
+          owner.liveOrders += liveOrders;
+          owner.chaseOrders += chaseOrders;
+          owner.live += liveOrders * ORDER_UNIT_PRICE;
+          owner.chase += chaseOrders * ORDER_UNIT_PRICE;
+          owner.gmv += orders * ORDER_UNIT_PRICE;
+          owner.attendance += predictedAttendanceCount(row.carry, row.owner, model, "owners");
+          owner.appointments += number(row.carry) * 0.5;
+          owner.conversion += orders;
+        });
+      });
+      OWNERS.forEach(name => {
+        if (!ownerMap.has(name)) ownerMap.set(name, { name, carry: compactMetric(metricFromMap(actualCarry.owners, name)).carry, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0 });
+      });
+      return [...ownerMap.values()].map(row => ({
+        ...row,
+        up: row.carry ? row.gmv / row.carry : 0
+      })).sort((a, b) => b.gmv - a.gmv);
+    }
     function channelPredictionRows(actualCarry, model) {
       return dimensionForecastRows(actualCarry, model, "channels");
     }
-    function ownerPredictionRows(actualCarry, model) {
+    function ownerPredictionRows(actualCarry, model, channelRows = null) {
+      if (channelRows?.length && actualCarry.ownerChannels?.size) {
+        return redistributeOwnerForecastFromChannels(actualCarry, model, channelRows);
+      }
       return dimensionForecastRows(actualCarry, model, "owners");
     }
     function predictionWithActualCarry(targetDate, actualCarry, detailPrediction, fallbackPrediction) {
       const model = historicalPredictionModel(targetDate);
       if (!actualCarry.carry) return detailPrediction || fallbackPrediction;
       const channelRows = channelPredictionRows(actualCarry, model);
-      const ownerRows = ownerPredictionRows(actualCarry, model);
+      const ownerRows = ownerPredictionRows(actualCarry, model, channelRows);
       const channels = new Map(channelRows.map(row => [row.name, row]));
       const owners = new Map(ownerRows.map(row => [row.name, row]));
       const gmv = channelRows.reduce((sum, row) => sum + row.gmv, 0) || model.gmv || fallbackPrediction.gmv || 0;
@@ -2102,8 +2255,8 @@
         .sort((a, b) => b.carry - a.carry);
       const predictedChaseOrders = channelRows.reduce((sum, row) => sum + row.chaseOrders, 0);
       const predictedLiveOrders = channelRows.reduce((sum, row) => sum + row.liveOrders, 0);
-      const predictedChaseGmv = predictedChaseOrders * 2980;
-      const predictedLiveGmv = predictedLiveOrders * 2980;
+      const predictedChaseGmv = predictedChaseOrders * ORDER_UNIT_PRICE;
+      const predictedLiveGmv = predictedLiveOrders * ORDER_UNIT_PRICE;
       const predictedTotalGmv = predictedChaseGmv + predictedLiveGmv;
       const predictedUp = prediction.carry ? predictedTotalGmv / prediction.carry : prediction.up;
       const flowRows = channelRows.filter(row => !isTailChannel(row.name));
@@ -2132,11 +2285,11 @@
         const appointment = isInquiryChannel(row.name) ? 0 : Math.min(carry, Math.max(predictedOrders, Math.round(baseAppointments)));
         const attendance = isInquiryChannel(row.name) ? 0 : Math.min(appointment, Math.max(predictedOrders, Math.round(baseAttendance || appointment * 0.5)));
         const orders = isInquiryChannel(row.name) ? predictedOrders : Math.min(attendance, predictedOrders);
-        const gmv = orders * 2980;
+        const gmv = orders * ORDER_UNIT_PRICE;
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("");
       document.getElementById("today-forecast-note").textContent = detailPrediction
-        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；先按各渠道历史转化订单率预测订单数，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按2980元/单折算GMV。`
+        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按概率分布表命中承接人数区间预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按1980元/单折算GMV。`
         : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
     }
 
@@ -2146,7 +2299,7 @@
       const actualCarry = actualCarryDay(target);
       const model = historicalPredictionModel(target);
       const predictedChannelRows = channelPredictionRows(actualCarry, model);
-      const predictedOwnerRows = ownerPredictionRows(actualCarry, model);
+      const predictedOwnerRows = ownerPredictionRows(actualCarry, model, predictedChannelRows);
       const predictedRowsGmv = predictedChannelRows.reduce((sum, row) => sum + row.gmv, 0);
       const predictedGmv = predictedRowsGmv || model.gmv;
       const predictedLive = predictedRowsGmv ? predictedChannelRows.reduce((sum, row) => sum + row.live, 0) : predictedGmv * model.liveShare;
