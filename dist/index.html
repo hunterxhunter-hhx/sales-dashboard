@@ -1056,6 +1056,10 @@
     function isHiddenZeroWeeklyChannel(row) {
       return ["待补录", "缺失渠道", "冲突渠道"].includes(row.name) && number(row.gmv) === 0;
     }
+    function isVisibleWeeklyOwner(row) {
+      if (row.name === "待补录") return row.gmv > 0;
+      return row.orders > 0 || row.gmv > 0;
+    }
     function topRows(map, limit = 5, key = "gmv") {
       return [...map.values()].sort((a, b) => (b[key] || 0) - (a[key] || 0)).slice(0, limit).map(row => ({ ...row, conversion: row.conversionUsers?.size || 0, up: row.carry ? row.gmv / row.carry : 0 }));
     }
@@ -1095,6 +1099,7 @@
     }
     function dimensionReportHtml(rows, total, baselineRows = [], options = {}) {
       if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const label = options.short ? shortChannel : name => name;
       const max = Math.max(...rows.map(row => row.gmv), 1);
       return rows.map((row, index) => {
         const base = baselineRows.find(item => item.name === row.name)?.gmv || 0;
@@ -1107,7 +1112,7 @@
         const rowClass = options.showOrders ? "compare-line is-clickable" : "";
         const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
         const hint = options.showOrders ? `<span>点击查看订单号</span>` : "";
-        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
+        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${label(row.name)}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
       }).join("");
     }
     function stackHtml(left, right, leftName = "直播", rightName = "追单") {
@@ -1125,7 +1130,7 @@
     function shortChannel(name) {
       if (name.includes("挂图")) return "挂图";
       if (name.includes("公号")) return "公号";
-      if (name.includes("回捞")) return "回捞";
+      if (name.includes("回捞")) return "激活";
       if (name.includes("询课")) return "询课";
       if (name.includes("有赞")) return "有赞";
       if (name.includes("视频号")) return "视频号";
@@ -1941,8 +1946,8 @@
       ].join("");
       const prior = rows.slice(Math.max(0, safeIndex - 4), safeIndex);
       const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
-      const ownerRows = completeRows(current.owners, OWNERS, "gmv");
-      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true });
+      const ownerRows = completeRows(current.owners, OWNERS, "gmv").filter(isVisibleWeeklyOwner);
+      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true, short: true });
       document.getElementById("week-owner-rank").innerHTML = dimensionReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
       document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
       document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
@@ -1968,7 +1973,7 @@
       const prior = rows.slice(Math.max(0, rows.length - 4), rows.length - 1);
       const channelRows = completeRows(current.channels, CHANNELS, "gmv");
       const owners = completeRows(current.owners, OWNERS, "gmv");
-      document.getElementById("month-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"));
+      document.getElementById("month-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { short: true });
       document.getElementById("month-owner-top").innerHTML = dimensionReportHtml(owners, current.gmv, averageDimension(prior, "owners"));
       const top = owners.find(row => row.gmv > 0);
       document.getElementById("month-top-owner-title").textContent = top ? `${top.name}为何第一` : "暂无";
