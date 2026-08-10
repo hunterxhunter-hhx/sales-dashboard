@@ -281,6 +281,34 @@
       height: 16px;
       background: rgba(26, 28, 31, 0.45);
     }
+    .segmented-report-track {
+      height: 24px;
+      overflow: visible;
+      background: rgba(26, 28, 31, 0.08);
+    }
+    .segmented-report-bar {
+      height: 100%;
+      min-width: 46px;
+      max-width: 100%;
+      display: flex;
+      overflow: hidden;
+      border-radius: 999px;
+      box-shadow: 0 7px 16px rgba(15, 23, 42, 0.08);
+    }
+    .segmented-report-bar.is-zero {
+      min-width: 0;
+      box-shadow: none;
+    }
+    .segmented-report-bar i {
+      height: 100%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-style: normal;
+      font-size: 12px;
+      font-weight: 650;
+      white-space: nowrap;
+    }
     .positive { color: var(--green); }
     .negative { color: var(--red); }
     .callout {
@@ -660,7 +688,7 @@
 
     <section class="page" data-page="review" aria-label="昨日复盘">
       <div class="section">
-        <div class="section-head"><div><h2>昨日复盘：实际对预测</h2><div class="sub">预测口径暂未接入，预测值先显示0</div></div><span class="viz-badge" id="review-date">最新完整日</span></div>
+        <div class="section-head"><div><h2>昨日复盘：实际对预测</h2><div class="sub">预测来自今日预测同一历史模型，实际来自承接表和订单表</div></div><span class="viz-badge" id="review-date">最新完整日</span></div>
         <div class="compare-shell">
           <div class="compare-pane">
             <h3>昨日预测</h3>
@@ -693,7 +721,7 @@
 
     <section class="page" data-page="weekly" aria-label="周报">
       <div class="section">
-        <div class="section-head"><div><h2 id="week-title">经营周报</h2><div class="sub">营收来源、渠道销售排名、历史标准与风险总结</div></div><div class="viz-row"><select id="week-selector" aria-label="选择周报周期"></select><span class="viz-badge" id="week-badge">本周GMV 0</span></div></div>
+        <div class="section-head"><div><h2 id="week-title">经营周报</h2><div class="sub">营收来源、渠道销售排名、历史标准与风险总结</div></div><div class="viz-row"><select id="week-selector" aria-label="选择周报周期"></select></div></div>
         <div class="rolling"><strong>滚动历史基线</strong><span class="text-muted">上周 · 近4周均值 · 历史区间</span></div>
         <div class="viz-grid" id="week-kpis"></div>
       </div>
@@ -713,7 +741,7 @@
 
     <section class="page active" data-page="monthly" aria-label="月报">
       <div class="section">
-        <div class="section-head"><div><h2 id="month-title">经营月报</h2><div class="sub">月度结果、营收来源、业务过程、历史标准、实验行动与下月重点</div></div><span class="viz-badge">完整月</span></div>
+        <div class="section-head"><div><h2 id="month-title">经营月报</h2><div class="sub">月度结果、营收来源、业务过程、历史标准、实验行动与下月重点</div></div><div class="viz-row"><select id="month-selector" aria-label="选择月报月份"></select></div></div>
         <div class="rolling"><strong>月度历史持续更新</strong><span class="text-muted">上月 · 滚动3月均值 · 近12月历史区间</span></div>
         <div class="viz-grid" id="month-kpis"></div>
         <div class="target-row"><span>一档 <strong id="month-target-tier-1">100w</strong></span><div class="track"><div id="month-target-fill-1" class="fill s2" style="width:0%"></div></div><span id="month-target-gap-1">还差100w</span></div>
@@ -793,6 +821,7 @@
       periods: { week: [], month: [], day: [] },
       selectedChannel: "",
       selectedWeek: "",
+      selectedMonth: "",
       charts: {}
     };
 
@@ -948,10 +977,10 @@
     }
 
     function emptyBucket(key, label, date) {
-      return { key, label, date, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, refunds: 0, refundAmount: 0, conversionUsers: new Set(), channels: new Map(), owners: new Map(), ownerChannels: new Map() };
+      return { key, label, date, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, refunds: 0, refundAmount: 0, conversionUsers: new Set(), channels: new Map(), owners: new Map(), ownerChannels: new Map() };
     }
     function ensureMetric(map, name) {
-      if (!map.has(name)) map.set(name, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] });
+      if (!map.has(name)) map.set(name, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] });
       return map.get(name);
     }
     function ensureOwnerChannel(map, owner, channel) {
@@ -997,20 +1026,20 @@
         row.refundAmount += order.refund;
         if (order.refund > 0) row.refunds += 1;
         if (order.effective) row.conversionUsers.add(order.wxid);
-        if (order.scenario === "直播间转化") row.live += order.gmv;
-        else row.chase += order.gmv;
+        if (order.scenario === "直播间转化") { row.live += order.gmv; row.liveOrders += 1; }
+        else { row.chase += order.gmv; row.chaseOrders += 1; }
         const channel = ensureMetric(row.channels, order.channel);
         channel.orders += 1; channel.gmv += order.gmv; channel.refundAmount += order.refund;
         if (order.orderNo) channel.orderNos.push(order.orderNo);
         if (order.refund > 0) channel.refunds += 1;
         if (order.effective) channel.conversionUsers.add(order.wxid);
-        if (order.scenario === "直播间转化") channel.live += order.gmv; else channel.chase += order.gmv;
+        if (order.scenario === "直播间转化") { channel.live += order.gmv; channel.liveOrders += 1; } else { channel.chase += order.gmv; channel.chaseOrders += 1; }
         const owner = ensureMetric(row.owners, order.owner);
         owner.orders += 1; owner.gmv += order.gmv; owner.refundAmount += order.refund;
         if (order.orderNo) owner.orderNos.push(order.orderNo);
         if (order.refund > 0) owner.refunds += 1;
         if (order.effective) owner.conversionUsers.add(order.wxid);
-        if (order.scenario === "直播间转化") owner.live += order.gmv; else owner.chase += order.gmv;
+        if (order.scenario === "直播间转化") { owner.live += order.gmv; owner.liveOrders += 1; } else { owner.chase += order.gmv; owner.chaseOrders += 1; }
         const oc = ensureOwnerChannel(row.ownerChannels, order.owner, order.channel);
         oc.orders += 1; oc.gmv += order.gmv;
       });
@@ -1054,8 +1083,52 @@
         resizeCharts();
       });
     }
+    function selectedMonthRow(rows) {
+      if (!rows.length) return emptyBucket("", "暂无", new Date());
+      if (!state.selectedMonth || !rows.some(row => row.key === state.selectedMonth)) {
+        state.selectedMonth = rows[rows.length - 1].key;
+      }
+      return rows.find(row => row.key === state.selectedMonth) || rows[rows.length - 1];
+    }
+    function renderMonthSelector(rows) {
+      const selector = document.getElementById("month-selector");
+      if (!selector) return;
+      if (!rows.length) {
+        selector.innerHTML = `<option value="">暂无可选月</option>`;
+        selector.disabled = true;
+        return;
+      }
+      selector.disabled = false;
+      if (!state.selectedMonth || !rows.some(row => row.key === state.selectedMonth)) {
+        state.selectedMonth = rows[rows.length - 1].key;
+      }
+      const options = rows.map(row => `<option value="${row.key}">${row.label}</option>`).join("");
+      if (selector.innerHTML !== options) selector.innerHTML = options;
+      selector.value = state.selectedMonth;
+      if (selector.dataset.bound === "1") return;
+      selector.dataset.bound = "1";
+      selector.addEventListener("change", () => {
+        state.selectedMonth = selector.value;
+        renderMonthly();
+        resizeCharts();
+      });
+    }
+    function isTailChannel(name) {
+      const value = text(name);
+      return ["缺失渠道", "冲突渠道", "待补录", "待归因"].includes(value) || value.includes("缺失") || value.includes("冲突") || value.includes("待");
+    }
+    function tailDimensionNames(names) {
+      const unique = [...new Set(names.filter(Boolean))];
+      return [...unique.filter(name => !isTailChannel(name)), ...unique.filter(isTailChannel)];
+    }
+    function hasAnyMetric(row) {
+      return number(row.gmv) > 0 || number(row.orders) > 0 || number(row.carry) > 0 || number(row.live) > 0 || number(row.chase) > 0;
+    }
+    function hideZeroTailRows(rows) {
+      return rows.filter(row => !isTailChannel(row.name) || hasAnyMetric(row));
+    }
     function isHiddenZeroWeeklyChannel(row) {
-      return ["待补录", "缺失渠道", "冲突渠道"].includes(row.name) && number(row.gmv) === 0;
+      return isTailChannel(row.name) && number(row.gmv) === 0;
     }
     function isVisibleWeeklyOwner(row) {
       if (row.name === "待补录") return row.gmv > 0;
@@ -1114,6 +1187,42 @@
         const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
         const hint = options.showOrders ? `<span>点击查看订单号</span>` : "";
         return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${label(row.name)}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
+      }).join("");
+    }
+    function liveChaseOrderText(row) {
+      const liveOrders = number(row.liveOrders) || predictedOrderCount(row.live);
+      const chaseOrders = number(row.chaseOrders) || Math.max(0, number(row.orders) - liveOrders) || predictedOrderCount(row.chase);
+      const totalOrders = liveOrders + chaseOrders || number(row.orders);
+      return `直播 ${percent(totalOrders ? liveOrders / totalOrders * 100 : 0)}（${plainNumber(liveOrders)}单）/ 追单 ${percent(totalOrders ? chaseOrders / totalOrders * 100 : 0)}（${plainNumber(chaseOrders)}单）`;
+    }
+    function segmentedLiveChaseBar(row, max) {
+      const gmv = number(row.gmv);
+      const live = number(row.live);
+      const chase = number(row.chase);
+      const liveOrders = number(row.liveOrders) || predictedOrderCount(live);
+      const chaseOrders = number(row.chaseOrders) || Math.max(0, number(row.orders) - liveOrders) || predictedOrderCount(chase);
+      const total = live + chase || gmv;
+      const width = gmv ? share(gmv, max) : 0;
+      const liveWidth = total ? live / total * 100 : 0;
+      const chaseWidth = total ? chase / total * 100 : 0;
+      return `<div class="segmented-report-bar ${gmv ? "" : "is-zero"}" style="width:${width}%"><i class="live" style="width:${liveWidth}%">直播 ${plainNumber(liveOrders)}单</i><i class="chase" style="width:${chaseWidth}%">追单 ${plainNumber(chaseOrders)}单</i></div>`;
+    }
+    function renderSegmentedReportHtml(rows, total, baselineRows = [], options = {}) {
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const label = options.short ? shortChannel : name => name;
+      const max = Math.max(...rows.map(row => row.gmv), 1);
+      return rows.map((row, index) => {
+        const base = baselineRows.find(item => item.name === row.name)?.gmv || 0;
+        const change = changeText(row.gmv, base);
+        const contribution = total ? row.gmv / total * 100 : 0;
+        const orderNos = [...new Set(row.orderNos || [])];
+        const orderDetail = options.showOrders
+          ? `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`
+          : "";
+        const rowClass = options.showOrders ? "compare-line is-clickable" : "";
+        const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
+        const hint = options.showOrders ? `<span>点击查看订单号</span>` : "";
+        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${label(row.name)}</strong><div class="track segmented-report-track">${segmentedLiveChaseBar(row, max)}<i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>${liveChaseOrderText(row)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
       }).join("");
     }
     function stackHtml(left, right, leftName = "直播", rightName = "追单") {
@@ -1209,7 +1318,7 @@
     }
     function metricFromMap(map, name) {
       const value = map?.get(name);
-      return value || { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] };
+      return value || { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, conversionUsers: new Set(), refunds: 0, refundAmount: 0, orderNos: [] };
     }
     function compactMetric(row) {
       return {
@@ -1219,6 +1328,8 @@
         gmv: number(row.gmv),
         live: number(row.live),
         chase: number(row.chase),
+        liveOrders: number(row.liveOrders),
+        chaseOrders: number(row.chaseOrders),
         attendance: number(row.attendance),
         conversion: row.conversionUsers?.size || number(row.conversion),
         up: row.carry ? number(row.gmv) / row.carry : 0,
@@ -1233,10 +1344,12 @@
         sum.gmv += item.gmv;
         sum.live += item.live;
         sum.chase += item.chase;
+        sum.liveOrders += item.liveOrders;
+        sum.chaseOrders += item.chaseOrders;
         sum.attendance += item.attendance;
         sum.conversion += item.conversion;
         return sum;
-      }, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, attendance: 0, conversion: 0 });
+      }, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, conversion: 0 });
     }
     function baselineForDate(targetDate) {
       const rows = rowsBeforeDay(targetDate, 28);
@@ -1379,6 +1492,44 @@
         return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}${hint}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(row.gmv, max)}%"></div></div>${gapNote}${orderDetail}</div>`;
       }).join("");
     }
+    function alignedReviewRows(actual, prediction, dimension, names, options = {}) {
+      const actualNames = [...(actual[dimension]?.keys?.() || [])];
+      const predictionNames = [...(prediction[dimension]?.keys?.() || [])];
+      const orderedNames = tailDimensionNames([...names, ...actualNames, ...predictionNames]);
+      return orderedNames.map(name => {
+        const actualItem = compactMetric(metricFromMap(actual[dimension], name));
+        const predictedItem = isTailChannel(name)
+          ? compactMetric({ name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, conversion: 0, orderNos: [] })
+          : compactMetric(metricFromMap(prediction[dimension], name));
+        return {
+          name,
+          actual: actualItem,
+          predicted: predictedItem,
+          gap: actualItem.gmv - predictedItem.gmv
+        };
+      }).filter(row => !(options.hideZeroActualTail && isTailChannel(row.name) && !hasAnyMetric(row.actual)));
+    }
+    function renderAlignedReviewMetricLines(rows, side, total, options = {}) {
+      const label = options.short ? shortChannel : name => name;
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const max = Math.max(total, ...rows.map(row => Math.max(row.actual.gmv, row.predicted.gmv)), 1);
+      return rows.map(row => {
+        const metric = row[side];
+        const noPrediction = side === "predicted" && isTailChannel(row.name);
+        const orderNos = [...new Set(row.actual.orderNos || [])];
+        const valueText = noPrediction ? "不预测" : `GMV ${exactCurrency(metric.gmv)} · 订单数 ${plainNumber(metric.orders)}`;
+        const gapText = noPrediction
+          ? `<span class="text-muted">缺失/冲突/待补录不参与预测</span>`
+          : `<span class="${row.gap >= 0 ? "positive" : "negative"}">实际-预测 ${row.gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(row.gap))}</span>`;
+        const orderDetail = options.showOrders
+          ? `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`
+          : "";
+        const rowClass = options.showOrders ? "compare-line is-clickable" : "compare-line";
+        const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
+        const barMetric = noPrediction ? { ...metric, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, orders: 0 } : metric;
+        return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>${valueText}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track segmented-report-track">${segmentedLiveChaseBar(barMetric, max)}</div><div class="rank-note"><span>${noPrediction ? "直播/追单 - / -" : liveChaseOrderText(metric)}</span>${gapText}</div>${orderDetail}</div>`;
+      }).join("");
+    }
     function workdayStatus(targetDate) {
       const target = dateOnly(targetDate);
       if (!target) return "第0 / 0个工作日";
@@ -1481,12 +1632,12 @@
         const day = dateOnly(order.orderTime);
         if (!day || (target && day >= target)) return;
         const key = formatDate(day);
-        if (!map.has(key)) map.set(key, { key, date: day, gmv: 0, chase: 0, live: 0, orders: 0 });
+        if (!map.has(key)) map.set(key, { key, date: day, gmv: 0, chase: 0, live: 0, orders: 0, chaseOrders: 0, liveOrders: 0 });
         const row = map.get(key);
         row.gmv += order.gmv;
         row.orders += 1;
-        if (isChaseOrder(order)) row.chase += order.gmv;
-        if (isLiveOrder(order)) row.live += order.gmv;
+        if (isChaseOrder(order)) { row.chase += order.gmv; row.chaseOrders += 1; }
+        if (isLiveOrder(order)) { row.live += order.gmv; row.liveOrders += 1; }
       });
       return [...map.values()].sort((a, b) => a.date - b.date);
     }
@@ -1639,19 +1790,27 @@
       const ownerTotals = new Map();
       periodRows.forEach(row => {
         row.channels.forEach((value, name) => {
-          if (!channelTotals.has(name)) channelTotals.set(name, { name, carry: 0, orders: 0, gmv: 0 });
+          if (!channelTotals.has(name)) channelTotals.set(name, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0 });
           const item = channelTotals.get(name);
           item.carry += value.carry || 0;
           item.orders += value.orders || 0;
           item.gmv += value.gmv || 0;
+          item.live += value.live || 0;
+          item.chase += value.chase || 0;
+          item.liveOrders += value.liveOrders || 0;
+          item.chaseOrders += value.chaseOrders || 0;
           item.attendance = (item.attendance || 0) + (value.attendance || 0);
         });
         row.owners.forEach((value, name) => {
-          if (!ownerTotals.has(name)) ownerTotals.set(name, { name, carry: 0, orders: 0, gmv: 0 });
+          if (!ownerTotals.has(name)) ownerTotals.set(name, { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0 });
           const item = ownerTotals.get(name);
           item.carry += value.carry || 0;
           item.orders += value.orders || 0;
           item.gmv += value.gmv || 0;
+          item.live += value.live || 0;
+          item.chase += value.chase || 0;
+          item.liveOrders += value.liveOrders || 0;
+          item.chaseOrders += value.chaseOrders || 0;
           item.attendance = (item.attendance || 0) + (value.attendance || 0);
         });
       });
@@ -1670,6 +1829,10 @@
       const targetAttendanceRate = targetCarry ? (actualCarry.attendance || 0) / targetCarry : historicalAttendanceRate;
       const liveShare = orderGmv ? orderLive / orderGmv : 0.5;
       const chaseShare = orderGmv ? orderChase / orderGmv : Math.max(0, 1 - liveShare);
+      const orderCount = orderRows.reduce((sum, row) => sum + row.orders, 0);
+      const liveOrderCount = orderRows.reduce((sum, row) => sum + row.liveOrders, 0);
+      const liveOrderShare = orderCount ? liveOrderCount / orderCount : liveShare;
+      const chaseOrderShare = Math.max(0, 1 - liveOrderShare);
       const overallUp = carry ? baseGmv / carry : 0;
       let channelWeightedUp = 0;
       actualCarry.channels.forEach((value, name) => {
@@ -1708,12 +1871,16 @@
           const shareValue = detailGmv && detailItem ? detailItem.gmv / detailGmv : (totalHistoryGmv && histItem ? histItem.gmv / totalHistoryGmv : 0);
           const rawRate = itemCarry ? itemOrders / itemCarry : smoothedConversionRate;
           const conversionRate = (itemOrders + smoothedConversionRate * 60) / Math.max(1, itemCarry + 60);
+          const liveOrders = histItem?.liveOrders || 0;
+          const totalOrders = histItem?.orders || 0;
+          const liveOrderRate = totalOrders ? liveOrders / totalOrders : liveOrderShare;
           result.set(name, {
           name,
           up: itemCarry ? itemGmv / itemCarry : (carry ? gmv / carry : 0),
           share: shareValue,
           rawRate,
           conversionRate,
+          liveOrderRate,
           attendanceRate: itemCarry ? itemAttendance / itemCarry : (carry ? attendance / carry : 0)
         });
       });
@@ -1726,6 +1893,8 @@
         up: carry ? gmv / carry : 0,
         liveShare,
         chaseShare,
+        liveOrderShare,
+        chaseOrderShare,
         attendanceRate: carry ? attendance / carry : 0,
         carry,
         baseGmv,
@@ -1769,14 +1938,15 @@
         const fallbackOrders = predictedOrderCount(scaledModelGmv * shareValue);
         const orders = Math.max(0, Math.round(predictedOrdersFromCarry || fallbackOrders));
         const gmv = orders * 2980;
-        const live = gmv * model.liveShare;
         const attendance = predictedAttendanceCount(row.carry, row.name, model, dimension);
         return {
           ...row,
           orders,
           gmv,
-          live,
-          chase: Math.max(0, gmv - live),
+          live: 0,
+          chase: 0,
+          liveOrders: 0,
+          chaseOrders: 0,
           appointments: row.carry * 0.5,
           attendance,
           up: row.carry ? gmv / row.carry : 0
@@ -1787,11 +1957,39 @@
       if (!totalOrders && expectedOrders && rows[0]) {
         rows[0].orders = expectedOrders;
         rows[0].gmv = expectedOrders * 2980;
-        rows[0].live = rows[0].gmv * model.liveShare;
-        rows[0].chase = Math.max(0, rows[0].gmv - rows[0].live);
         rows[0].up = rows[0].carry ? rows[0].gmv / rows[0].carry : 0;
       }
-      return rows;
+      return splitForecastRows(rows, model, dimension);
+    }
+    function splitForecastRows(rows, model, dimension = "channels") {
+      return rows.map(row => {
+        const orders = Math.max(0, Math.round(number(row.orders) || predictedOrderCount(row.gmv)));
+        const modelItem = model[dimension]?.get(row.name);
+        const fallbackRate = model.liveOrderShare ?? model.liveShare ?? 0;
+        const rawLiveRate = modelItem && modelItem.liveOrderRate !== undefined ? number(modelItem.liveOrderRate) : number(fallbackRate);
+        const liveRate = Math.max(0, Math.min(1, rawLiveRate));
+        const liveOrders = Math.min(orders, Math.max(0, Math.round(orders * liveRate)));
+        const chaseOrders = Math.max(0, orders - liveOrders);
+        const live = liveOrders * 2980;
+        const chase = chaseOrders * 2980;
+        const gmv = (liveOrders + chaseOrders) * 2980;
+        return {
+          ...row,
+          orders,
+          gmv,
+          live,
+          chase,
+          liveOrders,
+          chaseOrders,
+          up: row.carry ? gmv / row.carry : 0
+        };
+      });
+    }
+    function splitChannelForecastRows(rows, model) {
+      return splitForecastRows(rows, model, "channels");
+    }
+    function splitOwnerForecastRows(rows, model) {
+      return splitForecastRows(rows, model, "owners");
     }
     function channelPredictionRows(actualCarry, model) {
       return dimensionForecastRows(actualCarry, model, "channels");
@@ -1807,20 +2005,23 @@
       const channels = new Map(channelRows.map(row => [row.name, row]));
       const owners = new Map(ownerRows.map(row => [row.name, row]));
       const gmv = channelRows.reduce((sum, row) => sum + row.gmv, 0) || model.gmv || fallbackPrediction.gmv || 0;
-      const live = gmv * model.liveShare;
+      const live = channelRows.reduce((sum, row) => sum + row.live, 0);
+      const chase = channelRows.reduce((sum, row) => sum + row.chase, 0);
       return {
         ...(detailPrediction || fallbackPrediction),
         carry: actualCarry.carry,
         gmv,
         live,
-        chase: Math.max(0, gmv - live),
+        chase: chase || Math.max(0, gmv - live),
         up: actualCarry.carry ? gmv / actualCarry.carry : 0,
         channels,
         owners,
         baselineDays: model.baselineDays,
         source: model.source,
         liveShare: model.liveShare,
-        chaseShare: model.chaseShare
+        chaseShare: model.chaseShare,
+        liveOrderShare: model.liveOrderShare,
+        chaseOrderShare: model.chaseOrderShare
       };
     }
     function renderLiveChaseSummary(totalPredicted, targets) {
@@ -1844,16 +2045,16 @@
       const fallbackPrediction = predictDay(target);
       const prediction = predictionWithActualCarry(target, actualCarry, detailPrediction, fallbackPrediction);
       const model = historicalPredictionModel(target);
-      const chaseShare = prediction.chaseShare || model.chaseShare || (fallbackPrediction.gmv ? fallbackPrediction.chase / fallbackPrediction.gmv : 0);
-      const liveShare = prediction.liveShare || model.liveShare || Math.max(0, 1 - chaseShare);
-      const predictedChaseOrders = predictedOrderCount(prediction.gmv * chaseShare);
-      const predictedLiveOrders = predictedOrderCount(prediction.gmv * liveShare);
+      const channelRows = splitChannelForecastRows([...(prediction.channels?.values?.() || [])], model)
+        .filter(row => row.carry > 0 || row.gmv > 0)
+        .sort((a, b) => b.carry - a.carry);
+      const predictedChaseOrders = channelRows.reduce((sum, row) => sum + row.chaseOrders, 0);
+      const predictedLiveOrders = channelRows.reduce((sum, row) => sum + row.liveOrders, 0);
       const predictedChaseGmv = predictedChaseOrders * 2980;
       const predictedLiveGmv = predictedLiveOrders * 2980;
       const predictedTotalGmv = predictedChaseGmv + predictedLiveGmv;
       const predictedUp = prediction.carry ? predictedTotalGmv / prediction.carry : prediction.up;
-      const channelRows = [...prediction.channels.values()].filter(row => row.carry > 0 || row.gmv > 0).sort((a, b) => b.carry - a.carry);
-      const flowRows = channelRows.filter(row => !isMissingChannel(row.name));
+      const flowRows = channelRows.filter(row => !isTailChannel(row.name));
       document.getElementById("today-forecast-date").textContent = `${formatDate(target)}预测`;
       document.getElementById("today-source-date-note").textContent = `当前预测对象为 ${formatDate(target)}，日期取承接表“添加时间”的最新一日。`;
       document.getElementById("today-source-summary").textContent = `${formatDate(target)} 实际应销转 ${plainNumber(actualCarry.carry)} 人；模型综合承接规模、渠道结构、周几、近7/28日趋势和到课标签，历史基线 ${plainNumber(model.baselineDays)} 天。`;
@@ -1878,12 +2079,12 @@
         const predictedOrders = row.gmv > 0 ? Math.min(carry, Math.max(1, Math.round(baseOrders))) : 0;
         const appointment = isInquiryChannel(row.name) ? 0 : Math.min(carry, Math.max(predictedOrders, Math.round(baseAppointments)));
         const attendance = isInquiryChannel(row.name) ? 0 : Math.min(appointment, Math.max(predictedOrders, Math.round(baseAttendance || appointment * 0.5)));
-        const orders = isInquiryChannel(row.name) ? 0 : Math.min(attendance, predictedOrders);
+        const orders = isInquiryChannel(row.name) ? predictedOrders : Math.min(attendance, predictedOrders);
         const gmv = orders * 2980;
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("");
       document.getElementById("today-forecast-note").textContent = detailPrediction
-        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；GMV不再只取历史均值，而是综合承接规模系数${model.carryScale.toFixed(2)}、渠道结构系数${model.channelFactor.toFixed(2)}、周几系数${model.weekdayFactor.toFixed(2)}、近7/28日趋势${model.recentTrendFactor.toFixed(2)}和到课系数${model.attendanceFactor.toFixed(2)}；按2980元/单折算订单数。`
+        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；先按各渠道历史转化订单率预测订单数，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按2980元/单折算GMV。`
         : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
     }
 
@@ -1894,17 +2095,21 @@
       const model = historicalPredictionModel(target);
       const predictedChannelRows = channelPredictionRows(actualCarry, model);
       const predictedOwnerRows = ownerPredictionRows(actualCarry, model);
-      const predictedGmv = predictedChannelRows.reduce((sum, row) => sum + row.gmv, 0) || model.gmv;
+      const predictedRowsGmv = predictedChannelRows.reduce((sum, row) => sum + row.gmv, 0);
+      const predictedGmv = predictedRowsGmv || model.gmv;
+      const predictedLive = predictedRowsGmv ? predictedChannelRows.reduce((sum, row) => sum + row.live, 0) : predictedGmv * model.liveShare;
+      const predictedChase = predictedRowsGmv ? predictedChannelRows.reduce((sum, row) => sum + row.chase, 0) : predictedGmv * model.chaseShare;
+      const predictedOrders = predictedChannelRows.reduce((sum, row) => sum + row.orders, 0) || predictedOrderCount(predictedGmv);
       const prediction = {
         key: formatDate(target),
         label: formatDate(target),
         date: target,
         carry: actualCarry.carry,
-        orders: predictedOrderCount(predictedGmv),
+        orders: predictedOrders,
         gmv: predictedGmv,
-        live: predictedGmv * model.liveShare,
-        chase: predictedGmv * model.chaseShare,
-        conversion: predictedOrderCount(predictedGmv),
+        live: predictedLive,
+        chase: predictedChase,
+        conversion: predictedOrders,
         up: actualCarry.carry ? predictedGmv / actualCarry.carry : model.up,
         channels: new Map(predictedChannelRows.map(row => [row.name, row])),
         owners: new Map(predictedOwnerRows.map(row => [row.name, row])),
@@ -1919,11 +2124,10 @@
       document.getElementById("review-up").textContent = currency(day.up);
       document.getElementById("review-carry").textContent = plainNumber(day.carry);
       document.getElementById("review-conv").textContent = plainNumber(day.conversion);
-      const predictRows = completeRows(prediction.channels, CHANNELS, "gmv");
-      const channelRows = completeRows(day.channels, CHANNELS, "gmv");
-      document.getElementById("review-predict-lines").innerHTML = renderReviewMetricLines(predictRows, prediction.gmv, { short: true, comparisonRows: channelRows, gapMode: "comparison-minus-row" });
-      document.getElementById("review-actual-lines").innerHTML = renderReviewMetricLines(channelRows, day.gmv, { short: true, comparisonRows: predictRows, gapMode: "row-minus-comparison", showOrders: true });
-      document.getElementById("review-channel-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "channels", CHANNELS), { short: true });
+      const reviewRows = alignedReviewRows(day, prediction, "channels", tailDimensionNames(CHANNELS), { hideZeroActualTail: true });
+      document.getElementById("review-predict-lines").innerHTML = renderAlignedReviewMetricLines(reviewRows, "predicted", prediction.gmv, { short: true });
+      document.getElementById("review-actual-lines").innerHTML = renderAlignedReviewMetricLines(reviewRows, "actual", day.gmv, { short: true, showOrders: true });
+      document.getElementById("review-channel-gap").innerHTML = renderVarianceRows(reviewRows, { short: true });
       document.getElementById("review-owner-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "owners", OWNERS), { short: false });
       const gap = day.gmv - prediction.gmv;
       const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
@@ -1938,7 +2142,6 @@
       const safeIndex = currentIndex >= 0 ? currentIndex : rows.length - 1;
       const prev = safeIndex > 0 ? rows[safeIndex - 1] : null;
       document.getElementById("week-title").textContent = `${current.label}经营周报`;
-      document.getElementById("week-badge").textContent = `${weekRangeLabel(current.key)} GMV ${currency(current.gmv)}`;
       document.getElementById("week-kpis").innerHTML = [
         statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
         statCard("本周UP", currency(current.up), `较上周 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
@@ -1948,8 +2151,8 @@
       const prior = rows.slice(Math.max(0, safeIndex - 4), safeIndex);
       const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
       const ownerRows = completeRows(current.owners, OWNERS, "gmv").filter(isVisibleWeeklyOwner);
-      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true, short: true });
-      document.getElementById("week-owner-rank").innerHTML = dimensionReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
+      document.getElementById("week-channel-rank").innerHTML = renderSegmentedReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true, short: true });
+      document.getElementById("week-owner-rank").innerHTML = renderSegmentedReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
       document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
       document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
       document.getElementById("week-risk-text").textContent = "预测、到课、预约等过程字段暂未接入；当前注意项仅基于GMV、承接和转化。";
@@ -1958,9 +2161,12 @@
     }
 
     function renderMonthly() {
-      const rows = state.periods.month;
-      const current = latest("month");
-      const prev = previous("month");
+      const rows = state.periods.month || [];
+      renderMonthSelector(rows);
+      const current = selectedMonthRow(rows);
+      const currentIndex = rows.findIndex(row => row.key === current.key);
+      const safeIndex = currentIndex >= 0 ? currentIndex : rows.length - 1;
+      const prev = safeIndex > 0 ? rows[safeIndex - 1] : null;
       document.getElementById("month-title").textContent = `${current.label}经营月报`;
       document.getElementById("month-kpis").innerHTML = [
         statCard("净GMV", currency(current.gmv), `较上月 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
@@ -1971,9 +2177,9 @@
       renderReportMonthlyTargets(current.gmv);
       document.getElementById("month-source-stack").innerHTML = stackHtml(current.live, current.chase);
       document.getElementById("month-source-total").textContent = currency(current.gmv);
-      const prior = rows.slice(Math.max(0, rows.length - 4), rows.length - 1);
-      const channelRows = completeRows(current.channels, CHANNELS, "gmv");
-      const owners = completeRows(current.owners, OWNERS, "gmv");
+      const prior = rows.slice(Math.max(0, safeIndex - 3), safeIndex);
+      const channelRows = hideZeroTailRows(completeRows(current.channels, CHANNELS, "gmv"));
+      const owners = hideZeroTailRows(completeRows(current.owners, OWNERS, "gmv"));
       document.getElementById("month-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { short: true });
       document.getElementById("month-owner-top").innerHTML = dimensionReportHtml(owners, current.gmv, averageDimension(prior, "owners"));
       const top = owners.find(row => row.gmv > 0);
@@ -1991,7 +2197,7 @@
       document.getElementById("month-judge-text").textContent = `本月GMV ${currency(current.gmv)}，较上月 ${changeText(current.gmv, prev?.gmv || 0)}，UP ${currency(current.up)}。`;
       document.getElementById("month-risk-text").textContent = "目标、预约、到课、实验类字段暂未接入；当前风险仅基于承接、订单、GMV、退款和转化观察。";
       document.getElementById("month-summary").value = `${current.label}净GMV为${currency(current.gmv)}，承接${plainNumber(current.carry)}，转化${plainNumber(current.conversion)}，订单${plainNumber(current.orders)}笔。主要渠道为${channelRows.find(row => row.gmv > 0)?.name || "暂无"}，主要销售为${owners.find(row => row.gmv > 0)?.name || "暂无"}。`;
-      renderTrend("month-trend", rows.slice(-6), "月实际GMV", 3);
+      renderTrend("month-trend", rows.slice(Math.max(0, safeIndex - 5), safeIndex + 1), "月实际GMV", 3);
     }
 
     function averageDimension(rows, key) {

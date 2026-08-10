@@ -46,7 +46,8 @@ assert ".filter(isVisibleWeeklyOwner)" in weekly, "weekly owners should be filte
 assert "row.name === \"待补录\"" in function_body("isVisibleWeeklyOwner")
 assert "row.orders > 0 || row.gmv > 0" in function_body("isVisibleWeeklyOwner")
 
-assert "dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, \"channels\"), { showOrders: true, short: true })" in weekly
+assert "renderSegmentedReportHtml(channelRows, current.gmv, averageDimension(prior, \"channels\"), { showOrders: true, short: true })" in weekly
+assert "renderSegmentedReportHtml(ownerRows, current.gmv, averageDimension(prior, \"owners\"), { showOrders: true })" in weekly
 assert "dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, \"channels\"), { short: true })" in monthly
 
 print("report channel display rule checks passed")
