@@ -693,7 +693,7 @@
 
     <section class="page" data-page="weekly" aria-label="周报">
       <div class="section">
-        <div class="section-head"><div><h2 id="week-title">经营周报</h2><div class="sub">营收来源、渠道销售排名、历史标准与风险总结</div></div><span class="viz-badge" id="week-badge">本周GMV 0</span></div>
+        <div class="section-head"><div><h2 id="week-title">经营周报</h2><div class="sub">营收来源、渠道销售排名、历史标准与风险总结</div></div><div class="viz-row"><select id="week-selector" aria-label="选择周报周期"></select><span class="viz-badge" id="week-badge">本周GMV 0</span></div></div>
         <div class="rolling"><strong>滚动历史基线</strong><span class="text-muted">上周 · 近4周均值 · 历史区间</span></div>
         <div class="viz-grid" id="week-kpis"></div>
       </div>
@@ -792,6 +792,7 @@
       forecastDetails: [],
       periods: { week: [], month: [], day: [] },
       selectedChannel: "",
+      selectedWeek: "",
       charts: {}
     };
 
@@ -846,6 +847,18 @@
     function weekLabel(key) {
       const date = parseDate(key);
       return date ? `第${isoWeek(date)}周` : "未知周";
+    }
+    function weekEnd(key) {
+      const start = parseDate(key);
+      if (!start) return null;
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+      return end;
+    }
+    function weekRangeLabel(key) {
+      const start = parseDate(key);
+      const end = weekEnd(key);
+      return start && end ? `${formatDate(start)} ~ ${formatDate(end)}` : "暂无周期";
     }
     function currency(value) {
       return Math.round(number(value)).toLocaleString("zh-CN");
@@ -1010,6 +1023,39 @@
 
     function latest(mode) { const rows = state.periods[mode] || []; return rows[rows.length - 1] || emptyBucket("", "暂无", new Date()); }
     function previous(mode) { const rows = state.periods[mode] || []; return rows[rows.length - 2] || null; }
+    function selectedWeekRow(rows) {
+      if (!rows.length) return emptyBucket("", "暂无", new Date());
+      if (!state.selectedWeek || !rows.some(row => row.key === state.selectedWeek)) {
+        state.selectedWeek = rows[rows.length - 1].key;
+      }
+      return rows.find(row => row.key === state.selectedWeek) || rows[rows.length - 1];
+    }
+    function renderWeekSelector(rows) {
+      const selector = document.getElementById("week-selector");
+      if (!selector) return;
+      if (!rows.length) {
+        selector.innerHTML = `<option value="">暂无可选周</option>`;
+        selector.disabled = true;
+        return;
+      }
+      selector.disabled = false;
+      if (!state.selectedWeek || !rows.some(row => row.key === state.selectedWeek)) {
+        state.selectedWeek = rows[rows.length - 1].key;
+      }
+      const options = rows.map(row => `<option value="${row.key}">${weekRangeLabel(row.key)} · ${row.label}</option>`).join("");
+      if (selector.innerHTML !== options) selector.innerHTML = options;
+      selector.value = state.selectedWeek;
+      if (selector.dataset.bound === "1") return;
+      selector.dataset.bound = "1";
+      selector.addEventListener("change", () => {
+        state.selectedWeek = selector.value;
+        renderWeekly();
+        resizeCharts();
+      });
+    }
+    function isHiddenZeroWeeklyChannel(row) {
+      return ["待补录", "缺失渠道", "冲突渠道"].includes(row.name) && number(row.gmv) === 0;
+    }
     function topRows(map, limit = 5, key = "gmv") {
       return [...map.values()].sort((a, b) => (b[key] || 0) - (a[key] || 0)).slice(0, limit).map(row => ({ ...row, conversion: row.conversionUsers?.size || 0, up: row.carry ? row.gmv / row.carry : 0 }));
     }
@@ -1047,14 +1093,21 @@
         return `<div><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>贡献${percent(total ? row.gmv / total * 100 : 0)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span></div></div>`;
       }).join("");
     }
-    function dimensionReportHtml(rows, total, baselineRows = []) {
+    function dimensionReportHtml(rows, total, baselineRows = [], options = {}) {
       if (!rows.length) return `<div class="sub">暂无数据</div>`;
       const max = Math.max(...rows.map(row => row.gmv), 1);
       return rows.map((row, index) => {
         const base = baselineRows.find(item => item.name === row.name)?.gmv || 0;
         const change = changeText(row.gmv, base);
         const contribution = total ? row.gmv / total * 100 : 0;
-        return `<div><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span></div></div>`;
+        const orderNos = [...new Set(row.orderNos || [])];
+        const orderDetail = options.showOrders
+          ? `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`
+          : "";
+        const rowClass = options.showOrders ? "compare-line is-clickable" : "";
+        const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
+        const hint = options.showOrders ? `<span>点击查看订单号</span>` : "";
+        return `<div class="${rowClass}"${rowAttrs}><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><i class="fill s${(index % 4) + 1}" style="display:block;width:${share(row.gmv, max)}%"></i><i class="history-mark" style="left:${share(base, max)}%"></i></div><strong>${currency(row.gmv)}</strong></div><div class="rank-note"><span>GMV ${exactCurrency(row.gmv)}</span><span>订单 ${plainNumber(row.orders)}</span><span>承接 ${plainNumber(row.carry)}</span><span>UP ${currency(row.up)}</span><span>贡献${percent(contribution)}</span><span class="${changeClass(row.gmv, base)}">较历史${change}</span>${hint}</div>${orderDetail}</div>`;
       }).join("");
     }
     function stackHtml(left, right, leftName = "直播", rightName = "追单") {
@@ -1870,27 +1923,30 @@
     }
 
     function renderWeekly() {
-      const rows = state.periods.week;
-      const current = latest("week");
-      const prev = previous("week");
+      const rows = state.periods.week || [];
+      renderWeekSelector(rows);
+      const current = selectedWeekRow(rows);
+      const currentIndex = rows.findIndex(row => row.key === current.key);
+      const safeIndex = currentIndex >= 0 ? currentIndex : rows.length - 1;
+      const prev = safeIndex > 0 ? rows[safeIndex - 1] : null;
       document.getElementById("week-title").textContent = `${current.label}经营周报`;
-      document.getElementById("week-badge").textContent = `本周GMV ${currency(current.gmv)}`;
+      document.getElementById("week-badge").textContent = `${weekRangeLabel(current.key)} GMV ${currency(current.gmv)}`;
       document.getElementById("week-kpis").innerHTML = [
         statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
         statCard("本周UP", currency(current.up), `较上周 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
         statCard("承接人数", plainNumber(current.carry), `转化 ${plainNumber(current.conversion)} 人`),
-        statCard("历史位置", `${rows.findIndex(row => row.key === current.key) + 1}/${rows.length}`, "按时间序列")
+        statCard("历史位置", rows.length ? `${safeIndex + 1}/${rows.length}` : "0/0", "按时间序列")
       ].join("");
-      const prior = rows.slice(Math.max(0, rows.length - 5), rows.length - 1);
-      const channelRows = completeRows(current.channels, CHANNELS, "gmv");
+      const prior = rows.slice(Math.max(0, safeIndex - 4), safeIndex);
+      const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
       const ownerRows = completeRows(current.owners, OWNERS, "gmv");
-      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"));
-      document.getElementById("week-owner-rank").innerHTML = dimensionReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"));
+      document.getElementById("week-channel-rank").innerHTML = dimensionReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true });
+      document.getElementById("week-owner-rank").innerHTML = dimensionReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
       document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
       document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
       document.getElementById("week-risk-text").textContent = "预测、到课、预约等过程字段暂未接入；当前注意项仅基于GMV、承接和转化。";
       document.getElementById("week-summary").value = `本周GMV ${currency(current.gmv)}，UP ${currency(current.up)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。主要渠道为${channelRows.find(row => row.gmv > 0)?.name || "暂无"}，主要销售为${ownerRows.find(row => row.gmv > 0)?.name || "暂无"}。`;
-      renderTrend("week-trend", rows.slice(-6), "周实际GMV", 4);
+      renderTrend("week-trend", rows.slice(Math.max(0, safeIndex - 5), safeIndex + 1), "周实际GMV", 4);
     }
 
     function renderMonthly() {
@@ -2046,9 +2102,7 @@
     }
     function resizeCharts() { Object.values(state.charts).forEach(chart => chart.resize()); }
     function bindReviewOrderDrilldown() {
-      const container = document.getElementById("review-actual-lines");
-      if (!container || container.dataset.bound === "1") return;
-      container.dataset.bound = "1";
+      const containerIds = ["review-actual-lines", "week-channel-rank", "week-owner-rank"];
       const toggleRow = row => {
         const detail = row.querySelector("[data-review-order-detail]");
         if (!detail) return;
@@ -2057,17 +2111,22 @@
         row.setAttribute("aria-expanded", String(expanded));
         detail.hidden = !expanded;
       };
-      container.addEventListener("click", event => {
-        if (event.target.closest("[data-review-order-detail]")) return;
-        const row = event.target.closest("[data-review-order-row]");
-        if (row && container.contains(row)) toggleRow(row);
-      });
-      container.addEventListener("keydown", event => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        const row = event.target.closest("[data-review-order-row]");
-        if (!row || !container.contains(row)) return;
-        event.preventDefault();
-        toggleRow(row);
+      containerIds.forEach(id => {
+        const container = document.getElementById(id);
+        if (!container || container.dataset.bound === "1") return;
+        container.dataset.bound = "1";
+        container.addEventListener("click", event => {
+          if (event.target.closest("[data-review-order-detail]")) return;
+          const row = event.target.closest("[data-review-order-row]");
+          if (row && container.contains(row)) toggleRow(row);
+        });
+        container.addEventListener("keydown", event => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          const row = event.target.closest("[data-review-order-row]");
+          if (!row || !container.contains(row)) return;
+          event.preventDefault();
+          toggleRow(row);
+        });
       });
     }
 
