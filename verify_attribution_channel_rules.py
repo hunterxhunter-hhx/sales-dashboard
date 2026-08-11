@@ -24,6 +24,9 @@ def first_order(store: DashboardStore) -> dict:
 
 assert classify_channel("客户标签包含 2-视频号-下单") == "2-视频号-下单"
 assert classify_channel("客户标签包含 一转") == "一转"
+assert classify_channel("", "") == "一转"
+assert classify_channel("2-企微-询课", "激活组") == "激活组"
+assert classify_channel("1-挂图承接【私域部】 + 2-企微-询课", "") == "冲突渠道"
 assert '"一转"' in HTML.split("const CHANNELS =")[1].split(";")[0]
 assert '"激活组"' in HTML.split("const CHANNELS =")[1].split(";")[0]
 assert 'if (name.includes("一转")) return "一转";' in HTML

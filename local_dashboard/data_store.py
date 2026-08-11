@@ -113,13 +113,22 @@ def owner_name(employee_user_id: str, owner_raw: str) -> str:
     return owner_raw or "缺失企微"
 
 
-def classify_channel(tags: Any) -> str:
+def classify_channel(tags: Any, remark: Any = "") -> str:
+    remark_text = safe_text(remark)
+    if "激活组" in remark_text:
+        return "激活组"
+    remark_hits = [label for needle, label in CHANNEL_RULES if needle in remark_text]
+    if len(remark_hits) > 1:
+        return "冲突渠道"
+    if len(remark_hits) == 1:
+        return remark_hits[0]
+    if "一转" in remark_text:
+        return "一转"
+
     text = safe_text(tags)
     hits = [label for needle, label in CHANNEL_RULES if needle in text]
     if not hits:
-        if "一转" in text:
-            return "一转"
-        return "缺失渠道"
+        return "一转"
     if len(hits) > 1:
         return "冲突渠道"
     return hits[0]
@@ -133,10 +142,7 @@ def attribution_channel(channel: Any, customer_tags: Any) -> str:
     value = safe_text(channel)
     if value and value not in MISSING_CHANNELS:
         return value
-    tags = safe_text(customer_tags)
-    if "一转" in tags:
-        return "一转"
-    return value or classify_channel(tags)
+    return classify_channel(customer_tags)
 
 
 def apply_manual_remark_channel(channel: Any, manual_remark: Any) -> str:
@@ -162,13 +168,14 @@ def normalize_carry_row(row: dict[str, Any]) -> dict[str, Any]:
             employee_user_id = prefix
     add_time = parse_datetime(pick(row, ["添加时间", "首次添加时间", "创建时间"]))
     customer_tags = safe_text(pick(row, ["客户标签", "标签"]))
+    carry_remark = safe_text(pick(row, ["备注", "备注列", "客户备注", "渠道备注"]))
     return {
         "union_id": union_id,
         "employee_user_id": employee_user_id,
         "add_time": add_time,
         "owner_raw": owner_raw,
         "owner_name": owner_name(employee_user_id, owner_raw),
-        "channel": classify_channel(customer_tags),
+        "channel": classify_channel(customer_tags, carry_remark),
         "customer_tags": customer_tags,
         "raw_json": json.dumps(row, ensure_ascii=False, default=str),
     }

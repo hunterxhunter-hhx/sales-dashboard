@@ -102,7 +102,7 @@ def sanitize_dashboard_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 "union_id": user_ids.get(row.get("union_id")),
                 "add_time": row.get("add_time", ""),
                 "owner_name": row.get("owner_name", ""),
-                "channel": row.get("channel", "") or "缺失渠道",
+                "channel": row.get("channel", "") or "一转",
                 "customer_tags": public_tags(row.get("customer_tags")),
             }
         )

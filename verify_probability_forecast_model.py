@@ -23,7 +23,7 @@ def function_body(name: str) -> str:
 
 
 required_tokens = [
-    "const ORDER_UNIT_PRICE = 1980;",
+    "const ORDER_UNIT_PRICE = 2980;",
     "const CHANNEL_CONVERSION_RATE =",
     '"2-企微-询课"',
     "0.0202",
@@ -56,15 +56,15 @@ assert "ORDER_UNIT_PRICE" in split_forecast
 assert "2980" not in split_forecast
 
 render_today = function_body("renderToday")
-assert "predictedChaseOrders * ORDER_UNIT_PRICE" in render_today
-assert "predictedLiveOrders * ORDER_UNIT_PRICE" in render_today
-assert "1980" in render_today
-assert "2980" not in render_today
+forecast_for_date = function_body("forecastForDate")
+assert "predictedChaseOrders * ORDER_UNIT_PRICE" in forecast_for_date
+assert "predictedLiveOrders * ORDER_UNIT_PRICE" in forecast_for_date
+assert "2980" in render_today
 
 render_review = function_body("renderReview")
-assert "channelPredictionRows(actualCarry, model)" in render_review
-assert "ownerPredictionRows(actualCarry, model, predictedChannelRows)" in render_review
+assert "forecastForDate(target)" in render_review
+assert "forecast.prediction.owners" in render_review
 
-assert "2980" not in html, "Forecast page should not keep the old 2980 unit price marker"
+assert "1980" not in html, "Forecast page should not keep the old 1980 unit price marker"
 
 print("conversion forecast model verification passed")
