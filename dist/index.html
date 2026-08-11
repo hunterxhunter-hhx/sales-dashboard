@@ -2346,12 +2346,13 @@
       const actualCarry = actualCarryDay(target);
       const model = historicalPredictionModel(target);
       const predictedChannelRows = channelPredictionRows(actualCarry, model);
-      const predictedOwnerRows = ownerPredictionRows(actualCarry, model, predictedChannelRows);
-      const predictedRowsGmv = predictedChannelRows.reduce((sum, row) => sum + row.gmv, 0);
-      const predictedGmv = predictedRowsGmv || model.gmv;
-      const predictedLive = predictedRowsGmv ? predictedChannelRows.reduce((sum, row) => sum + row.live, 0) : predictedGmv * model.liveShare;
-      const predictedChase = predictedRowsGmv ? predictedChannelRows.reduce((sum, row) => sum + row.chase, 0) : predictedGmv * model.chaseShare;
-      const predictedOrders = predictedChannelRows.reduce((sum, row) => sum + row.orders, 0) || predictedOrderCount(predictedGmv);
+      const reviewForecastRows = predictedChannelRows.filter(row => !isTailChannel(row.name));
+      const predictedOwnerRows = ownerPredictionRows(actualCarry, model, reviewForecastRows);
+      const predictedRowsGmv = reviewForecastRows.reduce((sum, row) => sum + row.gmv, 0);
+      const predictedGmv = predictedRowsGmv;
+      const predictedLive = reviewForecastRows.reduce((sum, row) => sum + row.live, 0);
+      const predictedChase = reviewForecastRows.reduce((sum, row) => sum + row.chase, 0);
+      const predictedOrders = reviewForecastRows.reduce((sum, row) => sum + row.orders, 0);
       const prediction = {
         key: formatDate(target),
         label: formatDate(target),
@@ -2363,7 +2364,7 @@
         chase: predictedChase,
         conversion: predictedOrders,
         up: actualCarry.carry ? predictedGmv / actualCarry.carry : model.up,
-        channels: new Map(predictedChannelRows.map(row => [row.name, row])),
+        channels: new Map(reviewForecastRows.map(row => [row.name, row])),
         owners: new Map(predictedOwnerRows.map(row => [row.name, row])),
         baselineDays: model.baselineDays
       };
@@ -2376,7 +2377,8 @@
       document.getElementById("review-up").textContent = currency(day.up);
       document.getElementById("review-carry").textContent = plainNumber(day.carry);
       document.getElementById("review-conv").textContent = plainNumber(day.conversion);
-      const reviewRows = alignedReviewRows(day, prediction, "channels", tailDimensionNames(CHANNELS), { hideZeroActualTail: true });
+      const reviewRows = alignedReviewRows(day, prediction, "channels", tailDimensionNames(CHANNELS).filter(name => !isTailChannel(name)), { hideZeroActualTail: true })
+        .filter(row => !isTailChannel(row.name));
       document.getElementById("review-predict-lines").innerHTML = renderAlignedReviewMetricLines(reviewRows, "predicted", prediction.gmv, { short: true });
       document.getElementById("review-actual-lines").innerHTML = renderAlignedReviewMetricLines(reviewRows, "actual", day.gmv, { short: true, showOrders: true });
       document.getElementById("review-channel-gap").innerHTML = renderVarianceRows(reviewRows, { short: true });
