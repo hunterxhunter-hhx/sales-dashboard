@@ -846,11 +846,32 @@
         <div class="viz-grid" id="week-kpis"></div>
       </div>
       <div class="section two">
+        <div>
+          <h3>周度营收来源</h3>
+          <div class="rank-row"><span>成交场域</span><div class="stackbar" id="week-source-stack"></div><span id="week-source-total">0</span></div>
+        </div>
+        <div>
+          <div class="target-panel-head">
+            <h3>单日GMV目标完成情况</h3>
+            <span class="viz-badge" id="week-daily-target-date">下周一</span>
+          </div>
+          <div class="health-grid">
+            <div class="health goal-tier-1"><span>一档</span><strong id="week-daily-target-tier-1">0</strong><span id="week-daily-target-gap-1">按下周一工作日进度</span></div>
+            <div class="health goal-tier-2"><span>二档</span><strong id="week-daily-target-tier-2">0</strong><span id="week-daily-target-gap-2">按下周一工作日进度</span></div>
+            <div class="health goal-tier-3"><span>三档</span><strong id="week-daily-target-tier-3">0</strong><span id="week-daily-target-gap-3">按下周一工作日进度</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>近30天GMV趋势</h3>
+        <div id="week-30-day-trend" class="mini-chart"></div>
+        <textarea class="form-control" id="week-top-owner-conclusion" style="margin-top:12px"></textarea>
+      </div>
+      <div class="section two">
         <div><h3>渠道营收完整列表</h3><div class="rank" id="week-channel-rank"></div></div>
         <div><h3>销售营收完整列表</h3><div class="rank" id="week-owner-rank"></div></div>
       </div>
-      <div class="section two">
-        <div><h3>近6周实际与滚动均值</h3><div id="week-trend" class="mini-chart"></div></div>
+      <div class="section">
         <div><h3>本周判断与注意项</h3><div class="callout"><strong id="week-judge-title">暂无判断</strong><p id="week-judge-text">等待数据加载。</p></div><div class="callout warn"><strong>重点注意</strong><p id="week-risk-text">暂无。</p></div></div>
       </div>
       <div class="section two">
@@ -1069,6 +1090,9 @@
     }
     function exactCurrency(value) {
       return Math.round(number(value)).toLocaleString("zh-CN");
+    }
+    function wanCurrency(value) {
+      return `${(number(value) / 10000).toFixed(1)}万`;
     }
     function plainNumber(value) { return Math.round(number(value)).toLocaleString("zh-CN"); }
     function percent(value) { return `${number(value).toFixed(1)}%`; }
@@ -2634,6 +2658,80 @@
       document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。预测值沿用今日预测模块的固定转化率模型，实际值来自用户承接表和用户订单表；渠道与销售偏差均按实际GMV-预测GMV展示。`;
     }
 
+    function coreOwnerWeeklyGmv(current) {
+      return CORE_OWNERS.reduce((sum, owner) => sum + compactMetric(metricFromMap(current.owners, owner)).gmv, 0) / CORE_OWNERS.length;
+    }
+    function nextMondayAfterWeek(key) {
+      const end = weekEnd(key);
+      return addDays(end, 1);
+    }
+    function renderWeeklyDailyTargets(current) {
+      const nextMonday = nextMondayAfterWeek(current.key);
+      const month = monthForDate(nextMonday);
+      const forecast = forecastForDate(nextMonday);
+      const predictedGmv = forecast.predictedTotalGmv || forecast.prediction?.gmv || 0;
+      const targets = dailyRequiredTargets(month.gmv, nextMonday);
+      document.getElementById("week-daily-target-date").textContent = `${formatDate(nextMonday)} 下周一`;
+      targets.forEach((target, index) => {
+        const tier = index + 1;
+        if (!target) {
+          document.getElementById(`week-daily-target-tier-${tier}`).textContent = "达成";
+          document.getElementById(`week-daily-target-gap-${tier}`).textContent = "月度目标已达成（0.0%）";
+          return;
+        }
+        const gap = predictedGmv - target;
+        const gapPercent = Math.abs(gap) / target * 100;
+        document.getElementById(`week-daily-target-tier-${tier}`).textContent = currency(target);
+        document.getElementById(`week-daily-target-gap-${tier}`).textContent = gap >= 0 ? `预计超${currency(gap)}（${percent(gapPercent)}）` : `预计差${currency(Math.abs(gap))}（${percent(gapPercent)}）`;
+      });
+    }
+    function renderWeekThirtyDayTrend(current) {
+      const chart = chartFor("week-30-day-trend");
+      const end = weekEnd(current.key) || current.date;
+      const start = addDays(end, -29);
+      const days = [];
+      const map = new Map((state.periods.day || []).map(row => [formatDate(row.date), row]));
+      for (let index = 0; index < 30; index += 1) {
+        const date = addDays(start, index);
+        const key = formatDate(date);
+        const row = map.get(key) || { date, label: key, gmv: 0 };
+        days.push({ ...row, date, key, label: `${date.getMonth() + 1}/${date.getDate()}` });
+      }
+      const weekStartDate = weekStart(current.date);
+      const weekEndDate = weekEnd(current.key);
+      chart.setOption({
+        tooltip: { trigger: "axis", valueFormatter: currency },
+        legend: { top: 0, right: 0 },
+        grid: { left: 42, right: 18, top: 42, bottom: 28, containLabel: true },
+        color: ["#8AA0B6", "#F3883B"],
+        xAxis: { type: "category", data: days.map(row => row.label), axisLabel: { interval: 3 } },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: [
+          { name: "近30天GMV", type: "line", smooth: true, symbolSize: 4, data: days.map(row => Math.round(row.gmv || 0)) },
+          {
+            name: "本周7天GMV",
+            type: "line",
+            smooth: true,
+            symbolSize: 8,
+            lineStyle: { width: 4 },
+            data: days.map(row => row.date >= weekStartDate && row.date <= weekEndDate ? Math.round(row.gmv || 0) : null)
+          }
+        ]
+      }, true);
+    }
+    function renderWeeklyTopOwnerConclusion(current) {
+      const month = monthForDate(current.date);
+      const topOwners = CORE_OWNERS
+        .map(owner => compactMetric(metricFromMap(month.owners, owner)))
+        .sort((a, b) => b.gmv - a.gmv)
+        .filter(row => row.gmv > 0)
+        .slice(0, 2);
+      const textValue = topOwners.length >= 2
+        ? `当月最高单人产出${topOwners[0].name}和${topOwners[1].name}，分别为${wanCurrency(topOwners[0].gmv)}、${wanCurrency(topOwners[1].gmv)}。`
+        : "当月最高单人产出暂无充足数据。";
+      document.getElementById("week-top-owner-conclusion").value = textValue;
+    }
+
     function renderWeekly() {
       const rows = state.periods.week || [];
       renderWeekSelector(rows);
@@ -2646,18 +2744,22 @@
         statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
         statCard("本周UP", currency(current.up), `较上周 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
         statCard("承接人数", plainNumber(current.carry), `转化 ${plainNumber(current.conversion)} 人`),
-        statCard("历史位置", rows.length ? `${safeIndex + 1}/${rows.length}` : "0/0", "按时间序列")
+        statCard("本周人均产值", currency(coreOwnerWeeklyGmv(current)), "核心8人订单GMV / 8")
       ].join("");
       const prior = rows.slice(Math.max(0, safeIndex - 4), safeIndex);
       const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
       const ownerRows = completeRows(current.owners, OWNERS, "gmv").filter(isVisibleWeeklyOwner);
+      document.getElementById("week-source-stack").innerHTML = stackHtml(current.live, current.chase);
+      document.getElementById("week-source-total").textContent = currency(current.gmv);
+      renderWeeklyDailyTargets(current);
+      renderWeekThirtyDayTrend(current);
+      renderWeeklyTopOwnerConclusion(current);
       document.getElementById("week-channel-rank").innerHTML = renderSegmentedReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true, short: true });
       document.getElementById("week-owner-rank").innerHTML = renderSegmentedReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
       document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
       document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
       document.getElementById("week-risk-text").textContent = "预测、到课、预约等过程字段暂未接入；当前注意项仅基于GMV、承接和转化。";
       document.getElementById("week-summary").value = `本周GMV ${currency(current.gmv)}，UP ${currency(current.up)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。主要渠道为${channelRows.find(row => row.gmv > 0)?.name || "暂无"}，主要销售为${ownerRows.find(row => row.gmv > 0)?.name || "暂无"}。`;
-      renderTrend("week-trend", rows.slice(Math.max(0, safeIndex - 5), safeIndex + 1), "周实际GMV", 4);
     }
 
     function renderMonthly() {
