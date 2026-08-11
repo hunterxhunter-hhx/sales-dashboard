@@ -39,6 +39,7 @@ SOURCE_FILE_SPECS = [
 ]
 
 FORECAST_DETAIL_FILENAME = "明细表.xlsx"
+CHANNEL_CLASSIFICATION_VERSION = 2
 
 
 def safe_text(value: Any) -> str:
@@ -115,15 +116,8 @@ def owner_name(employee_user_id: str, owner_raw: str) -> str:
 
 def classify_channel(tags: Any, remark: Any = "") -> str:
     remark_text = safe_text(remark)
-    if "激活组" in remark_text:
-        return "激活组"
-    remark_hits = [label for needle, label in CHANNEL_RULES if needle in remark_text]
-    if len(remark_hits) > 1:
-        return "冲突渠道"
-    if len(remark_hits) == 1:
-        return remark_hits[0]
-    if "一转" in remark_text:
-        return "一转"
+    if remark_text:
+        return remark_text
 
     text = safe_text(tags)
     hits = [label for needle, label in CHANNEL_RULES if needle in text]
@@ -426,6 +420,9 @@ class DashboardStore:
             with self.session() as conn:
                 tracked = self._tracked_source(conn, data_type)
                 unchanged = tracked and int(tracked["size"]) == stat.st_size and int(tracked["mtime_ns"]) == stat.st_mtime_ns
+                if data_type == "carry" and unchanged:
+                    last_result = json.loads(tracked["last_result_json"] or "{}")
+                    unchanged = int(last_result.get("channel_classification_version") or 0) == CHANNEL_CLASSIFICATION_VERSION
                 if data_type == "orders" and unchanged:
                     unchanged = self._order_source_is_consistent(conn, tracked)
             if unchanged:
@@ -556,6 +553,7 @@ class DashboardStore:
                     )
                     result["inserted"] += 1
             self._finish_batch(conn, batch_id, result)
+        result["channel_classification_version"] = CHANNEL_CLASSIFICATION_VERSION
         self.recompute_attributions()
         return result
 
