@@ -1907,9 +1907,13 @@
       const matched = Object.keys(CHANNEL_CONVERSION_RATE).find(name => shortChannel(name) === short);
       return matched ? CHANNEL_CONVERSION_RATE[matched] : null;
     }
-    function channelConversionPredictedOrders(channel, carry) {
+    function channelConversionExpectedOrders(channel, carry) {
       const rate = channelConversionRate(channel);
-      return rate == null ? null : Math.max(0, Math.round(number(carry) * rate));
+      return rate == null ? null : Math.max(0, number(carry) * rate);
+    }
+    function channelConversionPredictedOrders(channel, carry) {
+      const expected = channelConversionExpectedOrders(channel, carry);
+      return expected == null ? null : Math.max(0, Math.round(expected));
     }
     function predictedOrderCount(gmv) {
       return Math.max(0, Math.round(number(gmv) / ORDER_UNIT_PRICE));
@@ -2096,31 +2100,43 @@
           + 0.18 * Math.max(0.55, Math.min(1.7, model.channelFactor || 1))
           + 0.12 * Math.max(0.75, Math.min(1.35, model.attendanceFactor || 1))
         ));
-        const probabilityOrders = dimension === "channels" ? channelConversionPredictedOrders(row.name, row.carry) : null;
+        const expectedFromRate = dimension === "channels" ? channelConversionExpectedOrders(row.name, row.carry) : null;
         const predictedOrdersFromCarry = row.carry * conversionRate * factor;
         const fallbackOrders = predictedOrderCount(scaledModelGmv * shareValue);
-        const orders = Math.max(0, Math.round(probabilityOrders ?? (predictedOrdersFromCarry || fallbackOrders)));
-        const gmv = orders * ORDER_UNIT_PRICE;
         const attendance = predictedAttendanceCount(row.carry, row.name, model, dimension);
         return {
           ...row,
-          orders,
-          gmv,
+          expectedOrders: Math.max(0, expectedFromRate ?? (predictedOrdersFromCarry || fallbackOrders)),
+          orders: 0,
+          gmv: 0,
           live: 0,
           chase: 0,
           liveOrders: 0,
           chaseOrders: 0,
           appointments: row.carry * 0.5,
           attendance,
-          up: row.carry ? gmv / row.carry : 0
+          up: 0
         };
       });
-      const expectedOrders = predictedOrderCount(scaledModelGmv);
-      const totalOrders = rows.reduce((sum, row) => sum + row.orders, 0);
-      if (!totalOrders && expectedOrders && rows[0]) {
-        rows[0].orders = expectedOrders;
-        rows[0].gmv = expectedOrders * ORDER_UNIT_PRICE;
-        rows[0].up = rows[0].carry ? rows[0].gmv / rows[0].carry : 0;
+      if (dimension === "channels") {
+        const totalExpectedOrders = rows.reduce((sum, row) => sum + (row.expectedOrders || 0), 0);
+        const totalOrders = Math.max(0, Math.round(totalExpectedOrders));
+        const allocations = allocateInteger(totalOrders, rows, row => row.expectedOrders || 0);
+        rows.forEach((row, index) => {
+          const orders = allocations[index] || 0;
+          const gmv = orders * ORDER_UNIT_PRICE;
+          row.orders = orders;
+          row.gmv = gmv;
+          row.up = row.carry ? gmv / row.carry : 0;
+        });
+      } else {
+        rows.forEach(row => {
+          const orders = Math.max(0, Math.round(row.expectedOrders || 0));
+          const gmv = orders * ORDER_UNIT_PRICE;
+          row.orders = orders;
+          row.gmv = gmv;
+          row.up = row.carry ? gmv / row.carry : 0;
+        });
       }
       return splitForecastRows(rows, model, dimension);
     }
