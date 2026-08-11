@@ -882,7 +882,7 @@
     const OWNERS = [...CORE_OWNERS, "激活组", "待补录"];
     const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
     const MONTH_TARGETS = [1000000, 1500000, 2000000];
-    const ORDER_UNIT_PRICE = 1980;
+    const ORDER_UNIT_PRICE = 2980;
     const CHANNEL_CONVERSION_RATE = {
       "2-企微-询课": 0.0202,
       "2-有赞-下单": 0.0188,
@@ -2336,7 +2336,7 @@
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("");
       document.getElementById("today-forecast-note").textContent = detailPrediction
-        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按固定转化率预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按1980元/单折算GMV。`
+        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按固定转化率预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按2980元/单折算GMV。`
         : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
     }
 
