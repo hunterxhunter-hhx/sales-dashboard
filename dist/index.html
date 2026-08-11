@@ -2300,13 +2300,13 @@
       const channelRows = splitChannelForecastRows([...(prediction.channels?.values?.() || [])], model)
         .filter(row => row.carry > 0 || row.gmv > 0)
         .sort((a, b) => b.carry - a.carry);
-      const predictedChaseOrders = channelRows.reduce((sum, row) => sum + row.chaseOrders, 0);
-      const predictedLiveOrders = channelRows.reduce((sum, row) => sum + row.liveOrders, 0);
+      const forecastRows = channelRows.filter(row => !isTailChannel(row.name));
+      const predictedChaseOrders = forecastRows.reduce((sum, row) => sum + row.chaseOrders, 0);
+      const predictedLiveOrders = forecastRows.reduce((sum, row) => sum + row.liveOrders, 0);
       const predictedChaseGmv = predictedChaseOrders * ORDER_UNIT_PRICE;
       const predictedLiveGmv = predictedLiveOrders * ORDER_UNIT_PRICE;
       const predictedTotalGmv = predictedChaseGmv + predictedLiveGmv;
       const predictedUp = prediction.carry ? predictedTotalGmv / prediction.carry : prediction.up;
-      const flowRows = channelRows.filter(row => !isTailChannel(row.name));
       document.getElementById("today-forecast-date").textContent = `${formatDate(target)}预测`;
       document.getElementById("today-source-date-note").textContent = `当前预测对象为 ${formatDate(target)}，日期取承接表“添加时间”的最新一日。`;
       document.getElementById("today-source-summary").textContent = `${formatDate(target)} 实际应销转 ${plainNumber(actualCarry.carry)} 人；模型综合承接规模、渠道结构、周几、近7/28日趋势和到课标签，历史基线 ${plainNumber(model.baselineDays)} 天。`;
@@ -2323,7 +2323,7 @@
       renderLiveChaseSummary(predictedLiveGmv + predictedChaseGmv, workdayTargets);
       document.getElementById("today-channel-card-list").innerHTML = renderTodayChannelLegend(channelRows, prediction.carry);
       document.getElementById("today-donut-note").textContent = `绝对数=应销转人数，百分比=占今日总应销转比例。当前总应销转 ${plainNumber(prediction.carry)}。`;
-      document.getElementById("today-channel-flow").innerHTML = flowRows.map(row => {
+      document.getElementById("today-channel-flow").innerHTML = forecastRows.map(row => {
         const carry = Math.max(0, Math.round(number(row.carry)));
         const baseAppointments = row.appointments == null ? carry * 0.5 : number(row.appointments);
         const baseAttendance = row.attendance == null ? baseAppointments * 0.5 : number(row.attendance);
