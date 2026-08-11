@@ -46,7 +46,8 @@ assert "2980" not in predicted_order
 dimension_forecast = function_body("dimensionForecastRows")
 assert 'dimension === "channels"' in dimension_forecast
 assert "channelConversionExpectedOrders(row.name, row.carry)" in dimension_forecast
-assert "allocateInteger(totalOrders, rows, row => row.expectedOrders || 0)" in dimension_forecast
+assert "Math.round(row.expectedOrders || 0)" in dimension_forecast
+assert "targetOrders" in dimension_forecast
 assert "ORDER_UNIT_PRICE" in dimension_forecast
 assert "2980" not in dimension_forecast
 

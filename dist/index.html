@@ -2118,25 +2118,37 @@
           up: 0
         };
       });
-      if (dimension === "channels") {
-        const totalExpectedOrders = rows.reduce((sum, row) => sum + (row.expectedOrders || 0), 0);
-        const totalOrders = Math.max(0, Math.round(totalExpectedOrders));
-        const allocations = allocateInteger(totalOrders, rows, row => row.expectedOrders || 0);
-        rows.forEach((row, index) => {
-          const orders = allocations[index] || 0;
-          const gmv = orders * ORDER_UNIT_PRICE;
-          row.orders = orders;
-          row.gmv = gmv;
-          row.up = row.carry ? gmv / row.carry : 0;
-        });
-      } else {
-        rows.forEach(row => {
-          const orders = Math.max(0, Math.round(row.expectedOrders || 0));
-          const gmv = orders * ORDER_UNIT_PRICE;
-          row.orders = orders;
-          row.gmv = gmv;
-          row.up = row.carry ? gmv / row.carry : 0;
-        });
+      rows.forEach(row => {
+        const orders = Math.max(0, Math.round(row.expectedOrders || 0));
+        row.orders = orders;
+        row.gmv = orders * ORDER_UNIT_PRICE;
+        row.up = row.carry ? row.gmv / row.carry : 0;
+      });
+      const targetOrders = Math.max(0, Math.round(rows.reduce((sum, row) => sum + (row.expectedOrders || 0), 0)));
+      let currentOrders = rows.reduce((sum, row) => sum + row.orders, 0);
+      if (currentOrders !== targetOrders) {
+        const direction = currentOrders < targetOrders ? 1 : -1;
+        const ranked = rows
+          .map(row => ({
+            row,
+            residual: (row.expectedOrders || 0) - Math.round(row.expectedOrders || 0),
+          }))
+          .sort((left, right) => direction > 0 ? right.residual - left.residual : left.residual - right.residual);
+        let remaining = Math.abs(targetOrders - currentOrders);
+        while (remaining > 0) {
+          let changed = false;
+          for (const item of ranked) {
+            if (remaining <= 0) break;
+            if (direction < 0 && item.row.orders <= 0) continue;
+            item.row.orders += direction;
+            item.row.gmv = item.row.orders * ORDER_UNIT_PRICE;
+            item.row.up = item.row.carry ? item.row.gmv / item.row.carry : 0;
+            currentOrders += direction;
+            remaining -= 1;
+            changed = true;
+          }
+          if (!changed) break;
+        }
       }
       return splitForecastRows(rows, model, dimension);
     }
