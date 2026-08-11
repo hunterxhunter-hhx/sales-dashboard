@@ -883,6 +883,14 @@
     const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
     const MONTH_TARGETS = [1000000, 1500000, 2000000];
     const ORDER_UNIT_PRICE = 1980;
+    const CHANNEL_CONVERSION_RATE = {
+      "2-企微-询课": 0.0202,
+      "2-有赞-下单": 0.0188,
+      "2-视频号-下单": 0.0175,
+      "2-企微-回捞": 0.0108,
+      "2-公号-引流": 0.0049,
+      "1-挂图承接【私域部】": 0.0016
+    };
     const CHANNEL_ORDER_PROBABILITY = {
       "2-企微-回捞": [
         { bucket: "0", probabilities: { 0: 1 } },
@@ -1892,6 +1900,17 @@
       const expected = probabilityExpectedOrders(channel, carry);
       return expected == null ? null : Math.max(0, Math.round(expected));
     }
+    function channelConversionRate(channel) {
+      const raw = text(channel);
+      if (Object.prototype.hasOwnProperty.call(CHANNEL_CONVERSION_RATE, raw)) return CHANNEL_CONVERSION_RATE[raw];
+      const short = shortChannel(raw);
+      const matched = Object.keys(CHANNEL_CONVERSION_RATE).find(name => shortChannel(name) === short);
+      return matched ? CHANNEL_CONVERSION_RATE[matched] : null;
+    }
+    function channelConversionPredictedOrders(channel, carry) {
+      const rate = channelConversionRate(channel);
+      return rate == null ? null : Math.max(0, Math.round(number(carry) * rate));
+    }
     function predictedOrderCount(gmv) {
       return Math.max(0, Math.round(number(gmv) / ORDER_UNIT_PRICE));
     }
@@ -2077,7 +2096,7 @@
           + 0.18 * Math.max(0.55, Math.min(1.7, model.channelFactor || 1))
           + 0.12 * Math.max(0.75, Math.min(1.35, model.attendanceFactor || 1))
         ));
-        const probabilityOrders = dimension === "channels" ? probabilityPredictedOrders(row.name, row.carry) : null;
+        const probabilityOrders = dimension === "channels" ? channelConversionPredictedOrders(row.name, row.carry) : null;
         const predictedOrdersFromCarry = row.carry * conversionRate * factor;
         const fallbackOrders = predictedOrderCount(scaledModelGmv * shareValue);
         const orders = Math.max(0, Math.round(probabilityOrders ?? (predictedOrdersFromCarry || fallbackOrders)));
@@ -2289,7 +2308,7 @@
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("");
       document.getElementById("today-forecast-note").textContent = detailPrediction
-        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按概率分布表命中承接人数区间预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按1980元/单折算GMV。`
+        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按固定转化率预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按1980元/单折算GMV。`
         : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
     }
 
@@ -2336,7 +2355,7 @@
       document.getElementById("review-owner-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "owners", OWNERS), { short: false });
       const gap = day.gmv - prediction.gmv;
       const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
-      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。预测值沿用今日预测模块的历史模型，实际值来自用户承接表和用户订单表；渠道与销售偏差均按实际GMV-预测GMV展示。`;
+      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。预测值沿用今日预测模块的固定转化率模型，实际值来自用户承接表和用户订单表；渠道与销售偏差均按实际GMV-预测GMV展示。`;
     }
 
     function renderWeekly() {
