@@ -547,6 +547,44 @@
       font-size: 14px;
       margin-top: 2px;
     }
+    .review-angle-title {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin: 12px 0 6px;
+      color: var(--foreground);
+      font-size: 13px;
+      font-weight: 750;
+    }
+    .review-angle-title::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--series-1);
+    }
+    .review-angle-title.owner-angle::before { background: var(--series-4); }
+    .review-funnel {
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .review-funnel-step {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 34px;
+      margin: 0 auto;
+      padding: 8px 12px;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 650;
+      background: var(--series-2);
+    }
+    .review-funnel-step:nth-child(2) { background: #e2a82f; }
+    .review-funnel-step:nth-child(3) { background: #d98345; }
+    .review-funnel-step:nth-child(4) { background: #c95e5e; }
     .review-order-detail {
       display: none;
       margin-top: 8px;
@@ -816,17 +854,22 @@
               <div class="compare-kpi">预测UP<strong id="review-predicted-up">0</strong></div>
               <div class="compare-kpi">预测承接<strong id="review-predicted-carry">0</strong></div>
               <div class="compare-kpi">预测转化<strong id="review-predicted-conversion">0</strong></div>
-              <div class="compare-kpi">昨日追单预测<strong id="review-predicted-chase">0</strong></div>
-              <div class="compare-kpi">当期直播间预测<strong id="review-predicted-live">0</strong></div>
+              <div class="compare-kpi">追单预测<strong id="review-predicted-chase">0</strong></div>
+              <div class="compare-kpi">直播间预测<strong id="review-predicted-live">0</strong></div>
+              <div class="compare-kpi">当期预测<strong id="review-current-predicted">0</strong></div>
+              <div class="compare-kpi">往期预测<strong id="review-past-predicted">0</strong></div>
             </div>
             <div id="review-predict-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期直播间预测</strong><span>承接-预约-到课-转化</span></div>
-                <div id="review-predict-live-lines"></div>
+                <div class="review-split-title live-title"><strong>当期预测</strong><span>D 当天承接用户在 D~D+2 的订单预测</span></div>
+                <div class="review-angle-title">渠道角度</div>
+                <div id="review-current-predict-channel"></div>
+                <div class="review-angle-title owner-angle">销售角度</div>
+                <div id="review-current-predict-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期追单预测</strong><span>触达-回复-约课-转化</span></div>
-                <div id="review-predict-chase-lines"></div>
+                <div class="review-split-title chase-title"><strong>往期预测</strong><span>历史用户在 D~D+2 的转化预测</span></div>
+                <div id="review-predict-funnel"></div>
               </div>
             </div>
           </div>
@@ -837,25 +880,26 @@
               <div class="compare-kpi">实际UP<strong id="review-up">0</strong></div>
               <div class="compare-kpi">实际承接<strong id="review-carry">0</strong></div>
               <div class="compare-kpi">实际转化<strong id="review-conv">0</strong></div>
-              <div class="compare-kpi">昨日追单实际<strong id="review-actual-chase">0</strong></div>
-              <div class="compare-kpi">当期直播间实际<strong id="review-actual-live">0</strong></div>
+              <div class="compare-kpi">追单实际<strong id="review-actual-chase">0</strong></div>
+              <div class="compare-kpi">直播间实际<strong id="review-actual-live">0</strong></div>
+              <div class="compare-kpi">当期实际<strong id="review-current-actual">0</strong></div>
+              <div class="compare-kpi">往期实际<strong id="review-past-actual">0</strong></div>
             </div>
             <div id="review-actual-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期直播间实际</strong><span>承接-预约-到课-转化</span></div>
-                <div id="review-actual-live-lines"></div>
+                <div class="review-split-title live-title"><strong>当期实际</strong><span>D 当天承接用户在 D~D+2 的实际订单</span></div>
+                <div class="review-angle-title">渠道角度</div>
+                <div id="review-current-actual-channel"></div>
+                <div class="review-angle-title owner-angle">销售角度</div>
+                <div id="review-current-actual-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期追单实际</strong><span>触达-回复-约课-转化</span></div>
-                <div id="review-actual-chase-lines"></div>
+                <div class="review-split-title chase-title"><strong>往期实际</strong><span>历史用户在 D~D+2 的实际订单</span></div>
+                <div id="review-actual-funnel"></div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-      <div class="section two">
-        <div><h3>渠道预测偏差</h3><div id="review-channel-gap"></div></div>
-        <div><h3>销售预测偏差</h3><div id="review-owner-gap"></div></div>
       </div>
       <div class="section callout warn"><strong>复盘结论</strong><p id="review-conclusion">预测字段暂未接入，当前仅展示实际经营结果。</p></div>
     </section>
@@ -2639,6 +2683,148 @@
         return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>${valueText}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(barValue, max)}%"></div></div>${reviewFlowNote(noPrediction ? { carry: 0, appointments: 0, attendance: 0, orders: 0 } : metric, scene)}<div class="rank-note">${gapText}</div>${orderDetail}</div>`;
       }).join("");
     }
+    function reviewThreeDayWindow(targetDate) {
+      const start = dateOnly(targetDate);
+      const end = addDays(start, 2);
+      return { start, end };
+    }
+    function userKeyForOrder(order) {
+      return text(order.wxid || order.userId);
+    }
+    function orderInWindow(order, window) {
+      const orderDate = dateOnly(order.orderTime);
+      const start = window.start;
+      const end = window.end;
+      return !!orderDate && !!start && !!end && orderDate >= start && orderDate <= end;
+    }
+    function cohortCarryUsers(targetDate, mode = "current") {
+      const target = dateOnly(targetDate);
+      if (!target) return [];
+      return state.carry.filter(user => {
+        if (!user.unionid || !user.addTime) return false;
+        const addTime = dateOnly(user.addTime);
+        return mode === "current" ? sameDate(addTime, target) : addTime < target;
+      });
+    }
+    function emptyReviewMetric(name) {
+      return { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0, orderNos: [], liveOrderNos: [], chaseOrderNos: [] };
+    }
+    function metricFromCarryUser(user) {
+      const attended = text(user.tags).includes("螳螂到课");
+      return { carry: 1, attendance: attended ? 1 : 0, appointments: 0 };
+    }
+    function addCarryToMetric(metric, user, appointments = 0) {
+      const values = metricFromCarryUser(user);
+      metric.carry += values.carry;
+      metric.attendance += values.attendance;
+      metric.appointments += appointments;
+    }
+    function addOrderToMetric(metric, order) {
+      metric.orders += 1;
+      metric.gmv += order.gmv;
+      metric.conversion += 1;
+      if (order.orderNo) metric.orderNos.push(order.orderNo);
+      if (order.scenario === "直播间转化") {
+        metric.live += order.gmv;
+        metric.liveOrders += 1;
+        if (order.orderNo) metric.liveOrderNos.push(order.orderNo);
+      } else {
+        metric.chase += order.gmv;
+        metric.chaseOrders += 1;
+        if (order.orderNo) metric.chaseOrderNos.push(order.orderNo);
+      }
+    }
+    function reviewWindowActuals(targetDate) {
+      const window = reviewThreeDayWindow(targetDate);
+      const currentUsers = cohortCarryUsers(targetDate, "current");
+      const pastUsers = cohortCarryUsers(targetDate, "past");
+      const currentIds = new Set(currentUsers.map(user => user.unionid));
+      const pastIds = new Set(pastUsers.map(user => user.unionid).filter(id => !currentIds.has(id)));
+      const currentMeta = new Map(currentUsers.map(user => [user.unionid, user]));
+      const pastMeta = new Map(pastUsers.filter(user => !currentIds.has(user.unionid)).map(user => [user.unionid, user]));
+      const current = { total: emptyReviewMetric("当期"), channels: new Map(), owners: new Map() };
+      const past = { total: emptyReviewMetric("往期"), channels: new Map(), owners: new Map() };
+      currentUsers.forEach(user => {
+        addCarryToMetric(current.total, user);
+        addCarryToMetric(ensureMetric(current.channels, user.channel), user);
+        addCarryToMetric(ensureMetric(current.owners, user.owner), user);
+      });
+      state.orders.forEach(order => {
+        if (!orderInWindow(order, window)) return;
+        const orderKey = userKeyForOrder(order);
+        const user = currentMeta.get(orderKey);
+        const pastUser = pastMeta.get(orderKey);
+        const target = orderKey === user?.unionid || order.userId === user?.unionid ? current : (pastIds.has(orderKey) ? past : null);
+        const meta = target === current ? user : pastUser;
+        if (!target || !meta) return;
+        addOrderToMetric(target.total, order);
+        addOrderToMetric(ensureMetric(target.channels, meta.channel), order);
+        addOrderToMetric(ensureMetric(target.owners, meta.owner), order);
+      });
+      return { window, current, past };
+    }
+    function distributePredictionToOwners(channelRows, actualCarry, model) {
+      const ownerRows = [...(actualCarry.owners?.values?.() || [])].map(compactMetric).filter(row => row.carry > 0);
+      const totalOrders = channelRows.reduce((sum, row) => sum + row.orders, 0);
+      const allocations = allocateInteger(totalOrders, ownerRows, row => row.carry);
+      const predictionOwners = ownerRows.map((row, index) => ({ ...row, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, appointments: 0 }));
+      predictionOwners.forEach((row, index) => {
+        const allocation = allocations[index] || 0;
+        predictionOwners[index].orders = allocation;
+      });
+      const splitRows = splitForecastRows(predictionOwners, model, "owners");
+      return new Map(splitRows.map(row => [row.name, row]));
+    }
+    function reviewCurrentPrediction(targetDate, forecast, actualCarry) {
+      const model = forecast.model || historicalPredictionModel(targetDate);
+      const channelRows = forecast.channelRows || [];
+      const owners = distributePredictionToOwners(channelRows, actualCarry, model);
+      return {
+        total: compactMetric({
+          name: "当期预测",
+          carry: actualCarry.carry,
+          orders: channelRows.reduce((sum, row) => sum + row.orders, 0),
+          gmv: channelRows.reduce((sum, row) => sum + row.gmv, 0),
+          live: channelRows.reduce((sum, row) => sum + row.live, 0),
+          chase: channelRows.reduce((sum, row) => sum + row.chase, 0),
+          liveOrders: channelRows.reduce((sum, row) => sum + row.liveOrders, 0),
+          chaseOrders: channelRows.reduce((sum, row) => sum + row.chaseOrders, 0),
+          attendance: actualCarry.attendance,
+          appointments: 0,
+          conversion: channelRows.reduce((sum, row) => sum + row.orders, 0)
+        }),
+        channels: new Map(channelRows.map(row => [row.name, row])),
+        owners
+      };
+    }
+    function completeReviewRows(map, names) {
+      return names.map(name => compactMetric(metricFromMap(map, name))).filter(row => hasAnyMetric(row));
+    }
+    function renderReviewCurrentLines(rows, total, options = {}) {
+      const label = options.short ? shortChannel : name => name;
+      if (!rows.length) return `<div class="sub">暂无数据</div>`;
+      const max = Math.max(total.gmv, ...rows.map(row => row.gmv), 1);
+      return rows.map((row, index) => {
+        const orderNos = [...new Set(row.orderNos || [])];
+        const orderDetail = options.showOrders
+          ? `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`
+          : "";
+        const rowClass = options.showOrders ? "compare-line is-clickable" : "compare-line";
+        const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
+        const flow = { carry: row.carry, appointments: row.appointments || 0, attendance: row.attendance || 0, orders: row.orders };
+        return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track segmented-report-track">${segmentedLiveChaseBar(row, max)}</div>${reviewFlowNote(flow, "live")}${orderDetail}</div>`;
+      }).join("");
+    }
+    function renderReviewFunnel(metric) {
+      const steps = [
+        ["触达", number(metric.touch)],
+        ["回复", number(metric.reply)],
+        ["询课", number(metric.inquiry)],
+        ["转化", number(metric.orders)]
+      ];
+      const max = Math.max(...steps.map(([, value]) => value), 1);
+      return `<div class="review-funnel">${steps.map(([label, value], index) => `<div class="review-funnel-step" style="width:${Math.max(42, 100 - index * 14, share(value, max))}%"><span>${label}</span><strong>${plainNumber(value)}</strong></div>`).join("")}</div>`;
+    }
     function ownerForecastRowsByRate(actualCarry) {
       const rows = [...CORE_OWNERS, "激活组"].map(name => {
         const actualCarryMetric = compactMetric(metricFromMap(actualCarry.owners, name));
@@ -2714,6 +2900,11 @@
       const actualCarry = actualCarryDay(target);
       const forecast = forecastForDate(target);
       const predictedOwnerRows = ownerForecastRowsByRate(actualCarry);
+      const windowActuals = reviewWindowActuals(target);
+      const currentPrediction = reviewCurrentPrediction(target, forecast, actualCarry);
+      const currentActual = windowActuals.current;
+      const pastPrediction = { total: compactMetric({ name: "往期预测", orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, conversion: 0 }) };
+      const pastActual = windowActuals.past;
       const predictedGmv = forecast.predictedTotalGmv;
       const predictedLive = forecast.predictedLiveGmv;
       const predictedChase = forecast.predictedChaseGmv;
@@ -2740,23 +2931,29 @@
       document.getElementById("review-predicted-conversion").textContent = plainNumber(prediction.conversion);
       document.getElementById("review-predicted-chase").textContent = `${plainNumber(forecast.predictedChaseOrders)}单`;
       document.getElementById("review-predicted-live").textContent = `${plainNumber(forecast.predictedLiveOrders)}单`;
+      document.getElementById("review-current-predicted").textContent = `${plainNumber(currentPrediction.total.orders)}单`;
+      document.getElementById("review-past-predicted").textContent = `${plainNumber(pastPrediction.total.orders)}单`;
       document.getElementById("review-gmv").textContent = exactCurrency(day.gmv);
       document.getElementById("review-up").textContent = currency(day.up);
       document.getElementById("review-carry").textContent = plainNumber(day.carry);
       document.getElementById("review-conv").textContent = plainNumber(day.conversion);
       document.getElementById("review-actual-chase").textContent = `${plainNumber(day.chaseOrders)}单`;
       document.getElementById("review-actual-live").textContent = `${plainNumber(day.liveOrders)}单`;
-      const reviewRows = alignedReviewRows(day, prediction, "channels", tailDimensionNames(CHANNELS), { hideZeroActualTail: true });
-      const predictableReviewRows = reviewRows.filter(row => !isTailChannel(row.name));
-      document.getElementById("review-predict-live-lines").innerHTML = renderReviewSceneLines(predictableReviewRows, "predicted", "live", prediction.live, { short: true });
-      document.getElementById("review-predict-chase-lines").innerHTML = renderReviewSceneLines(predictableReviewRows, "predicted", "chase", prediction.chase, { short: true });
-      document.getElementById("review-actual-live-lines").innerHTML = renderReviewSceneLines(reviewRows, "actual", "live", day.live, { short: true, showOrders: true });
-      document.getElementById("review-actual-chase-lines").innerHTML = renderReviewSceneLines(reviewRows, "actual", "chase", day.chase, { short: true, showOrders: true });
-      document.getElementById("review-channel-gap").innerHTML = renderVarianceRows(reviewRows, { short: true });
-      document.getElementById("review-owner-gap").innerHTML = renderVarianceRows(completeDimensionRows(day, prediction, "owners", [...CORE_OWNERS, "激活组"]).filter(row => row.name !== "待补录"), { short: false, showCarry: true });
+      document.getElementById("review-current-actual").textContent = `${plainNumber(currentActual.total.orders)}单`;
+      document.getElementById("review-past-actual").textContent = `${plainNumber(pastActual.total.orders)}单`;
+      const predictedChannels = completeReviewRows(currentPrediction.channels, CHANNELS).filter(row => !isTailChannel(row.name));
+      const predictedOwners = completeReviewRows(currentPrediction.owners, OWNERS).filter(row => row.name !== "待补录");
+      const actualChannels = completeReviewRows(currentActual.channels, tailDimensionNames([...CHANNELS, ...(currentActual.channels.keys?.() || [])]));
+      const actualOwners = completeReviewRows(currentActual.owners, OWNERS).filter(row => row.name !== "待补录");
+      document.getElementById("review-current-predict-channel").innerHTML = renderReviewCurrentLines(predictedChannels, currentPrediction.total, { short: true });
+      document.getElementById("review-current-predict-owner").innerHTML = renderReviewCurrentLines(predictedOwners, currentPrediction.total);
+      document.getElementById("review-current-actual-channel").innerHTML = renderReviewCurrentLines(actualChannels, currentActual.total, { short: true, showOrders: true });
+      document.getElementById("review-current-actual-owner").innerHTML = renderReviewCurrentLines(actualOwners, currentActual.total, { showOrders: true });
+      document.getElementById("review-predict-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastPrediction.total.orders });
+      document.getElementById("review-actual-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastActual.total.orders });
       const gap = day.gmv - prediction.gmv;
       const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
-      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。预测值沿用今日预测模块的固定转化率模型，实际值来自用户承接表和用户订单表；渠道与销售偏差均按实际GMV-预测GMV展示。`;
+      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。顶部总卡保留单日口径；当期/往期模块按 ${formatDate(windowActuals.window.start)} ~ ${formatDate(windowActuals.window.end)}（D+2）三天窗口统计。`;
     }
 
     function coreOwnerWeeklyGmv(current) {
