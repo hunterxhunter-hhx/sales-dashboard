@@ -5,7 +5,8 @@ root = Path(__file__).resolve().parent
 html = (root / "dashboard-prototype.html").read_text(encoding="utf-8")
 
 required_tokens = [
-    "function reviewThreeDayWindow",
+    "function businessDayWindow",
+    "function reviewAnchorDate",
     "function cohortCarryUsers",
     "function reviewWindowActuals",
     "function reviewCurrentPrediction",
@@ -26,7 +27,7 @@ required_tokens = [
     "直播间预测",
     "追单实际",
     "直播间实际",
-    "D+2",
+    "3个工作日",
 ]
 
 missing = [token for token in required_tokens if token not in html]
@@ -44,11 +45,12 @@ for forbidden in [
 ]:
     assert forbidden not in html, f"Forbidden old review token remains: {forbidden}"
 
-assert "orderDate >= start && orderDate <= end" in html
+assert "orderDate >= start && orderDate <= end" not in html
+assert "window.days.some(day => sameDate(orderDate, day))" in html
 assert "function userKeyForOrder(order)" in html
 assert "text(order.wxid || order.userId)" in html
 assert "const user = currentMeta.get(orderKey)" in html
 assert "pastIds.has(orderKey)" in html
 assert "predictionOwners[index].orders = allocation" in html
 
-print("review three-day window checks passed")
+print("review business-day window compatibility checks passed")

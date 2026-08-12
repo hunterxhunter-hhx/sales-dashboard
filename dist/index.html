@@ -940,14 +940,14 @@
             </div>
             <div id="review-predict-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期预测</strong><span>D 当天承接用户在 D~D+2 的订单预测</span></div>
+                <div class="review-split-title live-title"><strong>当期预测</strong><span>归属日承接用户在 3 个工作日内的订单预测</span></div>
                 <div class="review-angle-title">渠道角度</div>
                 <div id="review-current-predict-channel"></div>
                 <div class="review-angle-title owner-angle">销售角度</div>
                 <div id="review-current-predict-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期预测</strong><span>历史用户在 D~D+2 的转化预测</span></div>
+                <div class="review-split-title chase-title"><strong>往期预测</strong><span>历史用户在 3 个工作日内的转化预测</span></div>
                 <div id="review-predict-funnel"></div>
               </div>
             </div>
@@ -966,14 +966,14 @@
             </div>
             <div id="review-actual-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期实际</strong><span>D 当天承接用户在 D~D+2 的实际订单</span></div>
+                <div class="review-split-title live-title"><strong>当期实际</strong><span>归属日承接用户在 3 个工作日内的实际订单</span></div>
                 <div class="review-angle-title">渠道角度</div>
                 <div id="review-current-actual-channel"></div>
                 <div class="review-angle-title owner-angle">销售角度</div>
                 <div id="review-current-actual-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期实际</strong><span>历史用户在 D~D+2 的实际订单</span></div>
+                <div class="review-split-title chase-title"><strong>往期实际</strong><span>历史用户在 3 个工作日内的实际订单</span></div>
                 <div id="review-actual-funnel"></div>
               </div>
             </div>
@@ -1798,6 +1798,23 @@
         const owner = ensureMetric(bucket.owners, user.owner);
         owner.carry += 1;
         if (attended) owner.attendance = (owner.attendance || 0) + 1;
+        ensureOwnerChannel(bucket.ownerChannels, user.owner, user.channel).carry += 1;
+      });
+      return { ...bucket, conversion: 0, up: 0 };
+    }
+    function actualCarryForUsers(users, targetDate) {
+      const target = dateOnly(targetDate);
+      const bucket = emptyBucket(formatDate(target), formatDate(target), target);
+      users.forEach(user => {
+        const attended = user.tags.includes("螳螂到课");
+        bucket.carry += 1;
+        if (attended) bucket.attendance += 1;
+        const channel = ensureMetric(bucket.channels, user.channel);
+        channel.carry += 1;
+        if (attended) channel.attendance += 1;
+        const owner = ensureMetric(bucket.owners, user.owner);
+        owner.carry += 1;
+        if (attended) owner.attendance += 1;
         ensureOwnerChannel(bucket.ownerChannels, user.owner, user.channel).carry += 1;
       });
       return { ...bucket, conversion: 0, up: 0 };
@@ -2760,28 +2777,52 @@
         return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>${valueText}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(barValue, max)}%"></div></div>${reviewFlowNote(noPrediction ? { carry: 0, appointments: 0, attendance: 0, orders: 0 } : metric, scene)}<div class="rank-note">${gapText}</div>${orderDetail}</div>`;
       }).join("");
     }
-    function reviewThreeDayWindow(targetDate) {
-      const start = dateOnly(targetDate);
-      const end = addDays(start, 2);
-      return { start, end };
+    function reviewAnchorDate(targetDate) {
+      const target = dateOnly(targetDate);
+      if (!target) return null;
+      const day = target.getDay();
+      if (day === 6) return addDays(target, -1);
+      if (day === 0) return addDays(target, -2);
+      return target;
+    }
+    function businessDayWindow(targetDate, count = 3) {
+      const start = reviewAnchorDate(targetDate);
+      if (!start) return { start: null, end: null, days: [] };
+      const days = [];
+      let cursor = start;
+      while (days.length < count) {
+        if (isBusinessDay(cursor)) days.push(dateOnly(cursor));
+        cursor = addDays(cursor, 1);
+      }
+      return { start: days[0], end: days[days.length - 1], days };
+    }
+    function reviewWeekendCarryEnd(anchorDate) {
+      const anchor = dateOnly(anchorDate);
+      if (!anchor) return null;
+      if (anchor.getDay() !== 5) return anchor;
+      return addDays(anchor, 2);
     }
     function userKeyForOrder(order) {
       return text(order.wxid || order.userId);
     }
     function orderInWindow(order, window) {
       const orderDate = dateOnly(order.orderTime);
-      const start = window.start;
-      const end = window.end;
-      return !!orderDate && !!start && !!end && orderDate >= start && orderDate <= end;
+      if (!orderDate || !window?.days?.length) return false;
+      return window.days.some(day => sameDate(orderDate, day));
     }
     function cohortCarryUsers(targetDate, mode = "current") {
-      const target = dateOnly(targetDate);
-      if (!target) return [];
+      const anchor = reviewAnchorDate(targetDate);
+      if (!anchor) return [];
+      const carryEnd = reviewWeekendCarryEnd(anchor);
       return state.carry.filter(user => {
         if (!user.unionid || !user.addTime) return false;
         const addTime = dateOnly(user.addTime);
-        return mode === "current" ? sameDate(addTime, target) : addTime < target;
+        return mode === "current" ? addTime >= anchor && addTime <= carryEnd : addTime < anchor;
       });
+    }
+    function reviewCurrentCarry(targetDate) {
+      const anchor = reviewAnchorDate(targetDate);
+      return actualCarryForUsers(cohortCarryUsers(anchor, "current"), anchor);
     }
     function emptyReviewMetric(name) {
       return { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0, orderNos: [], liveOrderNos: [], chaseOrderNos: [] };
@@ -2812,9 +2853,10 @@
       }
     }
     function reviewWindowActuals(targetDate) {
-      const window = reviewThreeDayWindow(targetDate);
-      const currentUsers = cohortCarryUsers(targetDate, "current");
-      const pastUsers = cohortCarryUsers(targetDate, "past");
+      const anchor = reviewAnchorDate(targetDate);
+      const window = businessDayWindow(anchor, 3);
+      const currentUsers = cohortCarryUsers(anchor, "current");
+      const pastUsers = cohortCarryUsers(anchor, "past");
       const currentIds = new Set(currentUsers.map(user => user.unionid));
       const pastIds = new Set(pastUsers.map(user => user.unionid).filter(id => !currentIds.has(id)));
       const currentMeta = new Map(currentUsers.map(user => [user.unionid, user]));
@@ -2838,7 +2880,7 @@
         addOrderToMetric(ensureMetric(target.channels, meta.channel), order);
         addOrderToMetric(ensureMetric(target.owners, meta.owner), order);
       });
-      return { window, current, past };
+      return { anchor, window, current, past };
     }
     function distributePredictionToOwners(channelRows, actualCarry, model) {
       const ownerRows = [...(actualCarry.owners?.values?.() || [])].map(compactMetric).filter(row => row.carry > 0);
@@ -2853,8 +2895,13 @@
       return new Map(splitRows.map(row => [row.name, row]));
     }
     function reviewCurrentPrediction(targetDate, forecast, actualCarry) {
-      const model = forecast.model || historicalPredictionModel(targetDate);
-      const channelRows = forecast.channelRows || [];
+      const anchor = reviewAnchorDate(targetDate);
+      const anchorForecast = sameDate(anchor, forecast.target) ? forecast : forecastForDate(anchor);
+      const model = anchorForecast.model || historicalPredictionModel(anchor);
+      const prediction = predictionWithActualCarry(anchor, actualCarry, null, anchorForecast);
+      const channelRows = splitChannelForecastRows([...(prediction.channels?.values?.() || [])], model)
+        .filter(row => (row.carry > 0 || row.gmv > 0) && isPredictableChannel(row.name))
+        .sort((a, b) => b.carry - a.carry);
       const owners = distributePredictionToOwners(channelRows, actualCarry, model);
       return {
         total: compactMetric({
@@ -2978,7 +3025,8 @@
       const forecast = forecastForDate(target);
       const predictedOwnerRows = ownerForecastRowsByRate(actualCarry);
       const windowActuals = reviewWindowActuals(target);
-      const currentPrediction = reviewCurrentPrediction(target, forecast, actualCarry);
+      const reviewCarry = reviewCurrentCarry(target);
+      const currentPrediction = reviewCurrentPrediction(target, forecast, reviewCarry);
       const currentActual = windowActuals.current;
       const pastPrediction = { total: compactMetric({ name: "往期预测", orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, conversion: 0 }) };
       const pastActual = windowActuals.past;
@@ -3030,7 +3078,10 @@
       document.getElementById("review-actual-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastActual.total.orders });
       const gap = day.gmv - prediction.gmv;
       const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
-      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。顶部总卡保留单日口径；当期/往期模块按 ${formatDate(windowActuals.window.start)} ~ ${formatDate(windowActuals.window.end)}（D+2）三天窗口统计。`;
+      const carryEnd = reviewWeekendCarryEnd(windowActuals.anchor);
+      const windowDays = windowActuals.window.days.map(formatDate).join("、");
+      const anchorNote = sameDate(target, windowActuals.anchor) ? formatDate(windowActuals.anchor) : `${formatDate(target)}归并至${formatDate(windowActuals.anchor)}`;
+      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。顶部总卡保留单日口径；当期/往期模块按归属日 ${anchorNote} 统计，当期承接池为 ${formatDate(windowActuals.anchor)} ~ ${formatDate(carryEnd)}，订单窗口为3个工作日：${windowDays}。`;
     }
 
     function coreOwnerWeeklyGmv(current) {
