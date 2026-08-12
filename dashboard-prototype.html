@@ -718,6 +718,85 @@
       font-size: 14px;
       line-height: 1.55;
     }
+    .weekly-conclusion {
+      margin: 10px 0 12px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(51, 156, 255, 0.10), rgba(255, 255, 255, 0.84));
+      border: 1px solid rgba(51, 156, 255, 0.14);
+      color: var(--muted-foreground);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .weekly-conclusion strong { color: var(--foreground); }
+    .week-channel-trends {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .week-channel-trend-card {
+      min-width: 0;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 249, 253, 0.88));
+    }
+    .week-channel-trend-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+    .week-channel-trend-head strong { font-size: 14px; }
+    .week-channel-trend-head span { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+    .week-spark {
+      display: block;
+      width: 100%;
+      height: 86px;
+      margin: 2px 0 7px;
+      overflow: visible;
+    }
+    .week-spark-grid {
+      stroke: rgba(26, 28, 31, 0.08);
+      stroke-width: 1;
+      stroke-dasharray: 3 4;
+    }
+    .week-spark-gmv { fill: none; stroke: var(--series-1); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .week-spark-carry { fill: none; stroke: var(--series-2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .week-spark-up { fill: none; stroke: var(--series-3); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .week-channel-trend-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      color: var(--muted-foreground);
+      font-size: 11px;
+    }
+    .week-channel-trend-metrics span { min-width: 0; }
+    .week-channel-trend-metrics strong { display: block; color: var(--foreground); font-size: 13px; }
+    .week-channel-trend-note {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 7px;
+      color: var(--muted-foreground);
+      font-size: 12px;
+    }
+    .week-owner-mtd-bar {
+      display: flex;
+      height: 100%;
+      min-width: 0;
+      overflow: hidden;
+      border-radius: inherit;
+      background: transparent;
+    }
+    .week-owner-mtd-bar i {
+      display: block;
+      height: 100%;
+      min-width: 0;
+    }
+    .week-owner-mtd-prior { background: rgba(51, 156, 255, 0.34); }
+    .week-owner-mtd-current { background: var(--series-1); }
     .action-row {
       display: flex;
       justify-content: space-between;
@@ -734,7 +813,7 @@
       font-weight: 600;
     }
     @media (max-width: 1100px) {
-      .viz-grid, .two, .wide-side, .compare-shell, .channel-flow { grid-template-columns: 1fr; }
+      .viz-grid, .two, .wide-side, .compare-shell, .channel-flow, .week-channel-trends { grid-template-columns: 1fr; }
       .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .donut-wrap { grid-template-columns: 1fr; }
       .channel-card-list { grid-template-columns: 1fr; }
@@ -917,24 +996,22 @@
         </div>
         <div>
           <div class="target-panel-head">
-            <h3>单日GMV目标完成情况</h3>
-            <span class="viz-badge" id="week-daily-target-date">下周一</span>
+            <h3>后续单日目标</h3>
           </div>
           <div class="health-grid">
-            <div class="health goal-tier-1"><span>一档</span><strong id="week-daily-target-tier-1">0</strong><span id="week-daily-target-gap-1">按下周一工作日进度</span></div>
-            <div class="health goal-tier-2"><span>二档</span><strong id="week-daily-target-tier-2">0</strong><span id="week-daily-target-gap-2">按下周一工作日进度</span></div>
-            <div class="health goal-tier-3"><span>三档</span><strong id="week-daily-target-tier-3">0</strong><span id="week-daily-target-gap-3">按下周一工作日进度</span></div>
+            <div class="health goal-tier-1"><span>一档</span><strong id="week-daily-target-tier-1">0</strong></div>
+            <div class="health goal-tier-2"><span>二档</span><strong id="week-daily-target-tier-2">0</strong></div>
+            <div class="health goal-tier-3"><span>三档</span><strong id="week-daily-target-tier-3">0</strong></div>
           </div>
         </div>
       </div>
       <div class="section">
         <h3>近30天GMV趋势</h3>
         <div id="week-30-day-trend" class="mini-chart"></div>
-        <textarea class="form-control compact-conclusion" id="week-top-owner-conclusion" style="margin-top:10px"></textarea>
       </div>
       <div class="section two">
-        <div><h3>渠道营收完整列表</h3><div class="rank" id="week-channel-rank"></div></div>
-        <div><h3>销售营收完整列表</h3><div class="rank" id="week-owner-rank"></div></div>
+        <div><h3>渠道营收完整列表</h3><div class="weekly-conclusion" id="week-channel-conclusion"></div><div class="week-channel-trends" id="week-channel-trends"></div></div>
+        <div><h3>销售营收完整列表</h3><div class="weekly-conclusion" id="week-owner-conclusion"></div><div class="rank" id="week-owner-rank"></div></div>
       </div>
       <div class="section">
         <div><h3>本周判断与注意项</h3><div class="callout"><strong id="week-judge-title">暂无判断</strong><p id="week-judge-text">等待数据加载。</p></div><div class="callout warn"><strong>重点注意</strong><p id="week-risk-text">暂无。</p></div></div>
@@ -2966,21 +3043,10 @@
     function renderWeeklyDailyTargets(current) {
       const nextMonday = nextMondayAfterWeek(current.key);
       const month = monthForDate(nextMonday);
-      const forecast = forecastForDate(nextMonday);
-      const predictedGmv = forecast.predictedTotalGmv || forecast.prediction?.gmv || 0;
       const targets = dailyRequiredTargets(month.gmv, nextMonday);
-      document.getElementById("week-daily-target-date").textContent = `${formatDate(nextMonday)} 下周一`;
       targets.forEach((target, index) => {
         const tier = index + 1;
-        if (!target) {
-          document.getElementById(`week-daily-target-tier-${tier}`).textContent = "达成";
-          document.getElementById(`week-daily-target-gap-${tier}`).textContent = "月度目标已达成（0.0%）";
-          return;
-        }
-        const gap = predictedGmv - target;
-        const gapPercent = Math.abs(gap) / target * 100;
-        document.getElementById(`week-daily-target-tier-${tier}`).textContent = currency(target);
-        document.getElementById(`week-daily-target-gap-${tier}`).textContent = gap >= 0 ? `预计超${currency(gap)}（${percent(gapPercent)}）` : `预计差${currency(Math.abs(gap))}（${percent(gapPercent)}）`;
+        document.getElementById(`week-daily-target-tier-${tier}`).textContent = target ? currency(target) : "达成";
       });
     }
     function renderWeekThirtyDayTrend(current) {
@@ -3017,18 +3083,176 @@
         ]
       }, true);
     }
-    function renderWeeklyTopOwnerConclusion(current) {
-      const month = monthForDate(current.date);
-      const topOwners = CORE_OWNERS
-        .map(owner => compactMetric(metricFromMap(month.owners, owner)))
-        .sort((a, b) => b.gmv - a.gmv)
-        .filter(row => row.gmv > 0)
-        .slice(0, 2);
-      const textValue = topOwners.length >= 2
-        ? `当月最高单人产出${topOwners[0].name}和${topOwners[1].name}，分别为${wanCurrency(topOwners[0].gmv)}、${wanCurrency(topOwners[1].gmv)}。`
-        : "当月最高单人产出暂无充足数据。";
-      document.getElementById("week-top-owner-conclusion").value = textValue;
-      document.getElementById("week-top-owner-conclusion").rows = 2;
+    function weekWindowRows(current, count = 8) {
+      const rows = state.periods.week || [];
+      const index = rows.findIndex(row => row.key === current.key);
+      const safeIndex = index >= 0 ? index : rows.length - 1;
+      return rows.slice(Math.max(0, safeIndex - count + 1), safeIndex + 1);
+    }
+    function average(values) {
+      const clean = values.map(number);
+      return clean.length ? clean.reduce((sum, value) => sum + value, 0) / clean.length : 0;
+    }
+    function coefficientOfVariation(values) {
+      const clean = values.map(number);
+      const mean = average(clean);
+      if (!mean) return 0;
+      const variance = clean.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / clean.length;
+      return Math.sqrt(variance) / Math.abs(mean);
+    }
+    function sparklinePoints(values, width = 260, height = 86, padding = 8) {
+      const clean = values.map(number);
+      if (!clean.length) return "";
+      const min = Math.min(...clean);
+      const max = Math.max(...clean);
+      const span = max - min || 1;
+      return clean.map((value, index) => {
+        const x = clean.length === 1 ? width / 2 : padding + (width - padding * 2) * index / (clean.length - 1);
+        const y = height - padding - (value - min) / span * (height - padding * 2);
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      }).join(" ");
+    }
+    function weeklySparkSvg(metrics) {
+      return `<svg class="week-spark" viewBox="0 0 260 86" role="img" aria-label="近8周GMV承接UP趋势"><line class="week-spark-grid" x1="8" x2="252" y1="22" y2="22"></line><line class="week-spark-grid" x1="8" x2="252" y1="48" y2="48"></line><line class="week-spark-grid" x1="8" x2="252" y1="74" y2="74"></line><polyline class="week-spark-gmv" points="${sparklinePoints(metrics.map(row => row.gmv))}"></polyline><polyline class="week-spark-carry" points="${sparklinePoints(metrics.map(row => row.carry))}"></polyline><polyline class="week-spark-up" points="${sparklinePoints(metrics.map(row => row.up))}"></polyline></svg>`;
+    }
+    function trendDirection(currentValue, historyAverage) {
+      if (!historyAverage && !currentValue) return "与历史持平";
+      if (!historyAverage) return "较历史新增";
+      return `${currentValue >= historyAverage ? "较历史上升" : "较历史下降"}${changeText(currentValue, historyAverage)}`;
+    }
+    function weeklyChannelHistory(weekRows, channel) {
+      return weekRows.map(row => compactMetric(metricFromMap(row.channels, channel)));
+    }
+    function renderWeeklyChannelConclusion(current, weekWindowRows, channelRows) {
+      const candidates = channelRows
+        .filter(row => !isTailChannel(row.name))
+        .map(row => {
+          const history = weeklyChannelHistory(weekWindowRows, row.name);
+          const prior = history.slice(0, -1);
+          const gmvValues = history.map(item => item.gmv);
+          const carryValues = history.map(item => item.carry);
+          const upValues = history.map(item => item.up);
+          return {
+            ...row,
+            gmvCv: coefficientOfVariation(gmvValues),
+            carryCv: coefficientOfVariation(carryValues),
+            upCv: coefficientOfVariation(upValues),
+            historyAverage: average(prior.map(item => item.gmv))
+          };
+        })
+        .filter(row => row.gmv > 0 || row.historyAverage > 0);
+      const container = document.getElementById("week-channel-conclusion");
+      if (!candidates.length) {
+        container.innerHTML = "<strong>渠道波动结论</strong>：暂无足够渠道GMV历史可比较。";
+        return;
+      }
+      const target = candidates.sort((a, b) => b.gmvCv - a.gmvCv)[0];
+      const reason = target.carryCv >= target.upCv ? "主要原因更偏向承接规模波动，需要检查流量供给和排班节奏。" : "主要原因更偏向UP/成交效率波动，需要检查到课、转化话术和订单质量。";
+      const contribution = current.gmv ? target.gmv / current.gmv * 100 : 0;
+      container.innerHTML = `<strong>近8周波动最大：${shortChannel(target.name)}</strong>。本周GMV ${exactCurrency(target.gmv)}，贡献 ${percent(contribution)}，${trendDirection(target.gmv, target.historyAverage)}；GMV波动系数 ${percent(target.gmvCv * 100)}，${reason}`;
+    }
+    function renderWeeklyChannelTrendCards(current, weekWindowRows, channelRows) {
+      const rows = channelRows.filter(row => row.name !== "待补录" || row.gmv > 0 || row.carry > 0);
+      const container = document.getElementById("week-channel-trends");
+      if (!rows.length) {
+        container.innerHTML = `<div class="sub">暂无渠道数据</div>`;
+        return;
+      }
+      container.innerHTML = rows.map((row, index) => {
+        const history = weeklyChannelHistory(weekWindowRows, row.name);
+        const priorAverage = average(history.slice(0, -1).map(item => item.gmv));
+        const contribution = current.gmv ? row.gmv / current.gmv * 100 : 0;
+        const change = trendDirection(row.gmv, priorAverage);
+        const orderNos = [...new Set(row.orderNos || [])];
+        const orderDetail = `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`;
+        return `<div class="week-channel-trend-card compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false" style="--chip:${channelPalette(index)}"><div class="week-channel-trend-head"><strong><i class="channel-chip"></i>${shortChannel(row.name)}</strong><span>${change}</span></div>${weeklySparkSvg(history)}<div class="week-channel-trend-metrics"><span><strong>${exactCurrency(row.gmv)}</strong>GMV</span><span><strong>${plainNumber(row.carry)}</strong>承接</span><span><strong>${currency(row.up)}</strong>UP</span></div><div class="week-channel-trend-note"><span>本周贡献 ${percent(contribution)}</span><span>近8周GMV / 承接 / UP</span></div>${orderDetail}</div>`;
+      }).join("");
+    }
+    function emptyCompactMetric(name) {
+      return { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0, orderNos: [], liveOrderNos: [], chaseOrderNos: [] };
+    }
+    function mergeCompactMetric(target, source) {
+      target.carry += number(source.carry);
+      target.orders += number(source.orders);
+      target.gmv += number(source.gmv);
+      target.live += number(source.live);
+      target.chase += number(source.chase);
+      target.liveOrders += number(source.liveOrders);
+      target.chaseOrders += number(source.chaseOrders);
+      target.attendance += number(source.attendance);
+      target.appointments += number(source.appointments);
+      target.conversion += number(source.conversion);
+      target.orderNos.push(...(source.orderNos || []));
+      target.liveOrderNos.push(...(source.liveOrderNos || []));
+      target.chaseOrderNos.push(...(source.chaseOrderNos || []));
+      return target;
+    }
+    function sumDimensionForRows(rows, dimension, names) {
+      return names.map(name => {
+        const total = rows.reduce((sum, row) => mergeCompactMetric(sum, compactMetric(metricFromMap(row[dimension], name))), emptyCompactMetric(name));
+        total.orderNos = [...new Set(total.orderNos)];
+        total.liveOrderNos = [...new Set(total.liveOrderNos)];
+        total.chaseOrderNos = [...new Set(total.chaseOrderNos)];
+        total.up = total.carry ? total.gmv / total.carry : 0;
+        return total;
+      });
+    }
+    function weekMonthToDateDays(current) {
+      const end = dateOnly(weekEnd(current.key) || current.date);
+      const month = monthKey(end);
+      return (state.periods.day || []).filter(row => row.date && monthKey(row.date) === month && dateOnly(row.date) <= end);
+    }
+    function currentWeekDaysInMonth(current) {
+      const start = dateOnly(weekStart(current.date));
+      const end = dateOnly(weekEnd(current.key) || current.date);
+      const month = monthKey(end);
+      return (state.periods.day || []).filter(row => row.date && monthKey(row.date) === month && dateOnly(row.date) >= start && dateOnly(row.date) <= end);
+    }
+    function weeklyOwnerMtdRows(current) {
+      const mtdRows = sumDimensionForRows(weekMonthToDateDays(current), "owners", OWNERS);
+      const weekRows = new Map(sumDimensionForRows(currentWeekDaysInMonth(current), "owners", OWNERS).map(row => [row.name, row]));
+      return mtdRows.map(row => {
+        const week = weekRows.get(row.name) || emptyCompactMetric(row.name);
+        const weekGmv = Math.min(row.gmv, number(week.gmv));
+        const priorGmv = Math.max(0, row.gmv - weekGmv);
+        return {
+          ...row,
+          totalGmv: row.gmv,
+          weekGmv,
+          priorGmv,
+          weekCarry: week.carry,
+          weekOrders: week.orders,
+          weekLive: week.live,
+          weekChase: week.chase
+        };
+      }).filter(row => row.name !== "待补录" || row.totalGmv > 0).sort((a, b) => b.totalGmv - a.totalGmv);
+    }
+    function renderWeeklyOwnerConclusion(current, prev, ownerMtdRows) {
+      const coreMtd = ownerMtdRows.filter(row => CORE_OWNERS.includes(row.name));
+      const monthPerCapita = coreMtd.reduce((sum, row) => sum + row.totalGmv, 0) / CORE_OWNERS.length;
+      const weekPerCapita = coreOwnerWeeklyGmv(current);
+      const prevWeekPerCapita = prev ? coreOwnerWeeklyGmv(prev) : 0;
+      const compare = prevWeekPerCapita
+        ? `较上周单周${wanCurrency(prevWeekPerCapita)}${weekPerCapita >= prevWeekPerCapita ? "提高" : "降低"}${percent(Math.abs((weekPerCapita - prevWeekPerCapita) / prevWeekPerCapita * 100))}`
+        : "较上周单周暂无基准";
+      const topOwners = coreMtd.filter(row => row.totalGmv > 0).sort((a, b) => b.totalGmv - a.totalGmv).slice(0, 2);
+      const topText = topOwners.length >= 2
+        ? `当月最高单人产出${topOwners[0].name}和${topOwners[1].name}分别为${wanCurrency(topOwners[0].totalGmv)}、${wanCurrency(topOwners[1].totalGmv)}`
+        : "当月最高单人产出暂无充足数据";
+      document.getElementById("week-owner-conclusion").innerHTML = `<strong>销售产出结论</strong>：当前大课人均产出为${wanCurrency(monthPerCapita)}，单周人均产出${wanCurrency(weekPerCapita)}，${compare}；${topText}。`;
+    }
+    function renderWeeklyOwnerMtdBars(ownerMtdRows, currentGmv) {
+      if (!ownerMtdRows.length) return `<div class="sub">暂无销售数据</div>`;
+      const max = Math.max(...ownerMtdRows.map(row => row.totalGmv), 1);
+      return ownerMtdRows.map((row, index) => {
+        const total = number(row.totalGmv);
+        const barWidth = total ? share(total, max) : 0;
+        const currentWidth = total ? row.weekGmv / total * 100 : 0;
+        const priorWidth = total ? row.priorGmv / total * 100 : 0;
+        const orderNos = [...new Set(row.orderNos || [])];
+        const orderDetail = `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`;
+        return `<div class="compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><div class="week-owner-mtd-bar" style="width:${barWidth}%"><i class="week-owner-mtd-prior" style="width:${priorWidth}%" title="非本周 ${exactCurrency(row.priorGmv)}" aria-label="非本周 ${exactCurrency(row.priorGmv)}"></i><i class="week-owner-mtd-current" style="width:${currentWidth}%" title="本周 ${exactCurrency(row.weekGmv)}" aria-label="本周 ${exactCurrency(row.weekGmv)}"></i></div></div><strong>${exactCurrency(total)}</strong></div><div class="rank-note"><span>直播/追单 ${exactCurrency(row.weekLive)} / ${exactCurrency(row.weekChase)}</span><span>承接 ${plainNumber(row.weekCarry)}</span></div>${orderDetail}</div>`;
+      }).join("");
     }
 
     function renderWeekly() {
@@ -3038,6 +3262,7 @@
       const currentIndex = rows.findIndex(row => row.key === current.key);
       const safeIndex = currentIndex >= 0 ? currentIndex : rows.length - 1;
       const prev = safeIndex > 0 ? rows[safeIndex - 1] : null;
+      const weekHistoryRows = weekWindowRows(current);
       document.getElementById("week-title").textContent = `${current.label}经营周报`;
       document.getElementById("week-kpis").innerHTML = [
         statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
@@ -3045,16 +3270,17 @@
         statCard("承接人数", plainNumber(current.carry), `转化 ${plainNumber(current.conversion)} 人`),
         statCard("本周人均产值", currency(coreOwnerWeeklyGmv(current)), "核心8人订单GMV / 8")
       ].join("");
-      const prior = rows.slice(Math.max(0, safeIndex - 4), safeIndex);
       const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
-      const ownerRows = completeRows(current.owners, OWNERS, "gmv").filter(isVisibleWeeklyOwner);
+      const ownerMtdRows = weeklyOwnerMtdRows(current);
+      const ownerRows = ownerMtdRows.filter(isVisibleWeeklyOwner);
       document.getElementById("week-source-stack").innerHTML = stackHtml(current.live, current.chase);
       document.getElementById("week-source-total").textContent = currency(current.gmv);
       renderWeeklyDailyTargets(current);
       renderWeekThirtyDayTrend(current);
-      renderWeeklyTopOwnerConclusion(current);
-      document.getElementById("week-channel-rank").innerHTML = renderSegmentedReportHtml(channelRows, current.gmv, averageDimension(prior, "channels"), { showOrders: true, short: true });
-      document.getElementById("week-owner-rank").innerHTML = renderSegmentedReportHtml(ownerRows, current.gmv, averageDimension(prior, "owners"), { showOrders: true });
+      renderWeeklyChannelConclusion(current, weekHistoryRows, channelRows);
+      renderWeeklyChannelTrendCards(current, weekHistoryRows, channelRows);
+      renderWeeklyOwnerConclusion(current, prev, ownerMtdRows);
+      document.getElementById("week-owner-rank").innerHTML = renderWeeklyOwnerMtdBars(ownerRows, current.gmv);
       document.getElementById("week-judge-title").textContent = current.gmv >= (prev?.gmv || 0) ? "表现较好" : "需要关注";
       document.getElementById("week-judge-text").textContent = `本周GMV ${currency(current.gmv)}，承接 ${plainNumber(current.carry)}，转化 ${plainNumber(current.conversion)}。`;
       document.getElementById("week-risk-text").textContent = "预测、到课、预约等过程字段暂未接入；当前注意项仅基于GMV、承接和转化。";
@@ -3217,7 +3443,7 @@
     }
     function resizeCharts() { Object.values(state.charts).forEach(chart => chart.resize()); }
     function bindReviewOrderDrilldown() {
-      const containerIds = ["review-actual-lines", "week-channel-rank", "week-owner-rank"];
+      const containerIds = ["review-actual-lines", "week-channel-trends", "week-owner-rank"];
       const toggleRow = row => {
         const detail = row.querySelector("[data-review-order-detail]");
         if (!detail) return;
