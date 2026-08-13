@@ -727,12 +727,48 @@
       color: var(--muted-foreground);
       font-size: 13px;
       line-height: 1.6;
+      outline: none;
     }
     .weekly-conclusion strong { color: var(--foreground); }
-    .week-channel-trends {
+    .weekly-conclusion[contenteditable="true"]:focus {
+      border-color: rgba(22, 93, 255, 0.48);
+      box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.10);
+      background: rgba(255, 255, 255, 0.96);
+    }
+    .weekly-source-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
+      margin-top: 10px;
+    }
+    .weekly-donut-card {
+      min-width: 0;
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(248,251,255,.9));
+    }
+    .weekly-donut-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .weekly-donut-head strong { font-size: 14px; }
+    .weekly-donut-head span {
+      color: var(--muted-foreground);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .weekly-donut-chart {
+      width: 100%;
+      height: 178px;
+    }
+    .week-channel-trends {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
     }
     .week-channel-trend-card {
       min-width: 0;
@@ -750,6 +786,11 @@
     }
     .week-channel-trend-head strong { font-size: 14px; }
     .week-channel-trend-head span { color: var(--muted-foreground); font-size: 12px; white-space: nowrap; }
+    .week-channel-trend-chart {
+      width: 100%;
+      height: 150px;
+      margin: 2px 0 6px;
+    }
     .week-spark {
       display: block;
       width: 100%;
@@ -797,6 +838,22 @@
     }
     .week-owner-mtd-prior { background: rgba(51, 156, 255, 0.34); }
     .week-owner-mtd-current { background: var(--series-1); }
+    .weekly-owner-note {
+      margin: 6px 0 0;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      font-size: 12px;
+    }
+    .weekly-owner-note span {
+      padding: 5px 7px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.04);
+      color: var(--muted-foreground);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .action-row {
       display: flex;
       justify-content: space-between;
@@ -992,7 +1049,16 @@
       <div class="section two">
         <div>
           <h3>周度营收来源</h3>
-          <div class="rank-row"><span>成交场域</span><div class="stackbar" id="week-source-stack"></div><span id="week-source-total">0</span></div>
+          <div class="weekly-source-grid">
+            <div class="weekly-donut-card">
+              <div class="weekly-donut-head"><strong>直播 / 追单 GMV</strong><span id="week-source-total">0</span></div>
+              <div id="week-source-donut" class="weekly-donut-chart"></div>
+            </div>
+            <div class="weekly-donut-card">
+              <div class="weekly-donut-head"><strong>渠道 GMV</strong><span>按本周贡献</span></div>
+              <div id="week-channel-gmv-donut" class="weekly-donut-chart"></div>
+            </div>
+          </div>
         </div>
         <div>
           <div class="target-panel-head">
@@ -1010,8 +1076,8 @@
         <div id="week-30-day-trend" class="mini-chart"></div>
       </div>
       <div class="section two">
-        <div><h3>渠道营收完整列表</h3><div class="weekly-conclusion" id="week-channel-conclusion"></div><div class="week-channel-trends" id="week-channel-trends"></div></div>
-        <div><h3>销售营收完整列表</h3><div class="weekly-conclusion" id="week-owner-conclusion"></div><div class="rank" id="week-owner-rank"></div></div>
+        <div><h3>渠道营收完整列表</h3><div class="weekly-conclusion" id="week-channel-conclusion" contenteditable="true" data-auto-conclusion="channel"></div><div class="week-channel-trends" id="week-channel-trends"></div></div>
+        <div><h3>销售营收完整列表</h3><div class="weekly-conclusion" id="week-owner-conclusion" contenteditable="true" data-auto-conclusion="owner"></div><div class="rank" id="week-owner-rank"></div></div>
       </div>
       <div class="section">
         <div><h3>本周判断与注意项</h3><div class="callout"><strong id="week-judge-title">暂无判断</strong><p id="week-judge-text">等待数据加载。</p></div><div class="callout warn"><strong>重点注意</strong><p id="week-risk-text">暂无。</p></div></div>
@@ -1107,6 +1173,7 @@
       selectedReviewDate: "",
       selectedWeek: "",
       selectedMonth: "",
+      weeklyConclusionEdits: {},
       charts: {}
     };
 
@@ -1628,6 +1695,14 @@
         button.textContent = "已确认";
         button.disabled = true;
       }));
+      root.querySelectorAll("[data-auto-conclusion]").forEach(node => {
+        if (node.dataset.bound === "1") return;
+        node.dataset.bound = "1";
+        node.addEventListener("input", () => {
+          const key = `${node.id}:${state.selectedWeek || "latest"}`;
+          state.weeklyConclusionEdits[key] = node.innerHTML;
+        });
+      });
     }
 
     function dateOnly(date) {
@@ -3134,6 +3209,64 @@
         ]
       }, true);
     }
+    function setWeeklyEditableConclusion(id, html) {
+      const container = document.getElementById(id);
+      if (!container) return;
+      const key = `${id}:${state.selectedWeek || "latest"}`;
+      container.innerHTML = Object.prototype.hasOwnProperty.call(state.weeklyConclusionEdits, key)
+        ? state.weeklyConclusionEdits[key]
+        : html;
+    }
+    function weeklyDonutOption(rows, emptyText) {
+      const clean = rows.filter(row => number(row.value) > 0);
+      return {
+        color: clean.map(row => row.color).filter(Boolean),
+        tooltip: {
+          trigger: "item",
+          formatter: params => `${params.marker}${params.name}<br/>GMV ${exactCurrency(params.value)}<br/>贡献 ${percent(params.percent)}`
+        },
+        legend: {
+          type: "scroll",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          itemWidth: 9,
+          itemHeight: 9,
+          textStyle: { color: "#667085", fontSize: 11 }
+        },
+        title: clean.length ? undefined : {
+          text: emptyText,
+          left: "center",
+          top: "42%",
+          textStyle: { color: "#8B949E", fontSize: 12, fontWeight: 500 }
+        },
+        series: [{
+          type: "pie",
+          radius: ["52%", "72%"],
+          center: ["50%", "42%"],
+          avoidLabelOverlap: true,
+          label: { show: false },
+          labelLine: { show: false },
+          itemStyle: { borderColor: "#fff", borderWidth: 2 },
+          data: clean
+        }]
+      };
+    }
+    function renderWeeklySourceDonuts(current, channelRows) {
+      document.getElementById("week-source-total").textContent = `合计 ${exactCurrency(current.gmv)}`;
+      const sourceChart = chartFor("week-source-donut");
+      sourceChart.setOption(weeklyDonutOption([
+        { name: "直播", value: current.live, color: "#20C7B5" },
+        { name: "追单", value: current.chase, color: "#F6B800" }
+      ], "暂无营收"), true);
+      const channelChart = chartFor("week-channel-gmv-donut");
+      channelChart.setOption(weeklyDonutOption(
+        channelRows
+          .filter(row => row.gmv > 0)
+          .map((row, index) => ({ name: shortChannel(row.name), value: row.gmv, color: channelPalette(index) })),
+        "暂无渠道GMV"
+      ), true);
+    }
     function weekWindowRows(current, count = 8) {
       const rows = state.periods.week || [];
       const index = rows.findIndex(row => row.key === current.key);
@@ -3174,12 +3307,22 @@
     function weeklyChannelHistory(weekRows, channel) {
       return weekRows.map(row => compactMetric(metricFromMap(row.channels, channel)));
     }
+    function weeklyChannelPreviousWeek(weekWindowRows, channel) {
+      if (!weekWindowRows || weekWindowRows.length < 2) return emptyCompactMetric(channel);
+      return compactMetric(metricFromMap(weekWindowRows[weekWindowRows.length - 2].channels, channel));
+    }
+    function compareToPreviousText(currentValue, previousValue) {
+      if (!previousValue && !currentValue) return "较上周持平";
+      if (!previousValue) return "较上周新增";
+      return `${currentValue >= previousValue ? "较上周上升" : "较上周下降"}${changeText(currentValue, previousValue)}`;
+    }
     function renderWeeklyChannelConclusion(current, weekWindowRows, channelRows) {
       const candidates = channelRows
         .filter(row => !isTailChannel(row.name))
         .map(row => {
           const history = weeklyChannelHistory(weekWindowRows, row.name);
           const prior = history.slice(0, -1);
+          const previous = weeklyChannelPreviousWeek(weekWindowRows, row.name);
           const gmvValues = history.map(item => item.gmv);
           const carryValues = history.map(item => item.carry);
           const upValues = history.map(item => item.up);
@@ -3188,36 +3331,78 @@
             gmvCv: coefficientOfVariation(gmvValues),
             carryCv: coefficientOfVariation(carryValues),
             upCv: coefficientOfVariation(upValues),
-            historyAverage: average(prior.map(item => item.gmv))
+            historyAverage: average(prior.map(item => item.gmv)),
+            previousGmv: previous.gmv
           };
         })
         .filter(row => row.gmv > 0 || row.historyAverage > 0);
       const container = document.getElementById("week-channel-conclusion");
       if (!candidates.length) {
-        container.innerHTML = "<strong>渠道波动结论</strong>：暂无足够渠道GMV历史可比较。";
+        setWeeklyEditableConclusion("week-channel-conclusion", "<strong>渠道波动结论</strong>：暂无足够渠道GMV历史可比较。");
         return;
       }
       const target = candidates.sort((a, b) => b.gmvCv - a.gmvCv)[0];
       const reason = target.carryCv >= target.upCv ? "主要原因更偏向承接规模波动，需要检查流量供给和排班节奏。" : "主要原因更偏向UP/成交效率波动，需要检查到课、转化话术和订单质量。";
       const contribution = current.gmv ? target.gmv / current.gmv * 100 : 0;
-      container.innerHTML = `<strong>近8周波动最大：${shortChannel(target.name)}</strong>。本周GMV ${exactCurrency(target.gmv)}，贡献 ${percent(contribution)}，${trendDirection(target.gmv, target.historyAverage)}；GMV波动系数 ${percent(target.gmvCv * 100)}，${reason}`;
+      setWeeklyEditableConclusion("week-channel-conclusion", `<strong>近8周波动最大：${shortChannel(target.name)}</strong>。本周GMV ${exactCurrency(target.gmv)}，贡献 ${percent(contribution)}，${compareToPreviousText(target.gmv, target.previousGmv)}；GMV波动系数 ${percent(target.gmvCv * 100)}，${reason}`);
     }
     function renderWeeklyChannelTrendCards(current, weekWindowRows, channelRows) {
-      const rows = channelRows.filter(row => row.name !== "待补录" || row.gmv > 0 || row.carry > 0);
+      const rows = channelRows.filter(row => row.gmv > 0 || row.carry > 0 || row.up > 0);
       const container = document.getElementById("week-channel-trends");
+      Object.keys(state.charts)
+        .filter(id => id.startsWith("week-channel-trend-"))
+        .forEach(id => {
+          state.charts[id].dispose();
+          delete state.charts[id];
+        });
       if (!rows.length) {
         container.innerHTML = `<div class="sub">暂无渠道数据</div>`;
         return;
       }
       container.innerHTML = rows.map((row, index) => {
         const history = weeklyChannelHistory(weekWindowRows, row.name);
-        const priorAverage = average(history.slice(0, -1).map(item => item.gmv));
+        const previous = weeklyChannelPreviousWeek(weekWindowRows, row.name);
         const contribution = current.gmv ? row.gmv / current.gmv * 100 : 0;
-        const change = trendDirection(row.gmv, priorAverage);
+        const change = compareToPreviousText(row.gmv, previous.gmv);
         const orderNos = [...new Set(row.orderNos || [])];
         const orderDetail = `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`;
-        return `<div class="week-channel-trend-card compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false" style="--chip:${channelPalette(index)}"><div class="week-channel-trend-head"><strong><i class="channel-chip"></i>${shortChannel(row.name)}</strong><span>${change}</span></div>${weeklySparkSvg(history)}<div class="week-channel-trend-metrics"><span><strong>${exactCurrency(row.gmv)}</strong>GMV</span><span><strong>${plainNumber(row.carry)}</strong>承接</span><span><strong>${currency(row.up)}</strong>UP</span></div><div class="week-channel-trend-note"><span>本周贡献 ${percent(contribution)}</span><span>近8周GMV / 承接 / UP</span></div>${orderDetail}</div>`;
+        return `<div class="week-channel-trend-card compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false" style="--chip:${channelPalette(index)}"><div class="week-channel-trend-head"><strong><i class="channel-chip"></i>${shortChannel(row.name)}</strong><span>${change}</span></div><div id="week-channel-trend-${index}" class="week-channel-trend-chart"></div><div class="week-channel-trend-metrics"><span><strong>${exactCurrency(row.gmv)}</strong>本周GMV</span><span><strong>${plainNumber(row.carry)}</strong>本周承接</span><span><strong>${currency(row.up)}</strong>本周UP</span></div><div class="week-channel-trend-note"><span>本周贡献 ${percent(contribution)}</span><span>近8周本周GMV / 本周承接 / 本周UP</span></div>${orderDetail}</div>`;
       }).join("");
+      rows.forEach((row, index) => {
+        const history = weeklyChannelHistory(weekWindowRows, row.name);
+        chartFor(`week-channel-trend-${index}`).setOption({
+          color: ["#165DFF", "#20C7B5", "#F6B800"],
+          tooltip: {
+            trigger: "axis",
+            valueFormatter: value => exactCurrency(value)
+          },
+          legend: {
+            top: 0,
+            right: 0,
+            itemWidth: 9,
+            itemHeight: 9,
+            textStyle: { color: "#667085", fontSize: 11 }
+          },
+          grid: { left: 36, right: 16, top: 34, bottom: 24, containLabel: true },
+          xAxis: {
+            type: "category",
+            boundaryGap: false,
+            data: weekWindowRows.map(item => item.label || weekLabel(item.key)),
+            axisTick: { show: false },
+            axisLine: { lineStyle: { color: "#E5E7EB" } },
+            axisLabel: { color: "#8B949E", fontSize: 11 }
+          },
+          yAxis: [
+            { type: "value", min: 0, axisLabel: { color: "#8B949E", fontSize: 11 }, splitLine: { lineStyle: { color: "rgba(15,23,42,.08)" } } },
+            { type: "value", min: 0, axisLabel: { color: "#8B949E", fontSize: 11 }, splitLine: { show: false } }
+          ],
+          series: [
+            { name: "本周GMV", type: "line", smooth: true, symbolSize: 6, lineStyle: { width: 3 }, data: history.map(item => Math.round(item.gmv || 0)) },
+            { name: "本周承接", type: "line", yAxisIndex: 1, smooth: true, symbolSize: 6, lineStyle: { width: 2.4 }, data: history.map(item => Math.round(item.carry || 0)) },
+            { name: "本周UP", type: "line", smooth: true, symbolSize: 6, lineStyle: { width: 2.4 }, data: history.map(item => Math.round(item.up || 0)) }
+          ]
+        }, true);
+      });
     }
     function emptyCompactMetric(name) {
       return { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0, orderNos: [], liveOrderNos: [], chaseOrderNos: [] };
@@ -3290,7 +3475,7 @@
       const topText = topOwners.length >= 2
         ? `当月最高单人产出${topOwners[0].name}和${topOwners[1].name}分别为${wanCurrency(topOwners[0].totalGmv)}、${wanCurrency(topOwners[1].totalGmv)}`
         : "当月最高单人产出暂无充足数据";
-      document.getElementById("week-owner-conclusion").innerHTML = `<strong>销售产出结论</strong>：当前大课人均产出为${wanCurrency(monthPerCapita)}，单周人均产出${wanCurrency(weekPerCapita)}，${compare}；${topText}。`;
+      setWeeklyEditableConclusion("week-owner-conclusion", `<strong>销售产出结论</strong>：当前大课人均产出为${wanCurrency(monthPerCapita)}，单周人均产出${wanCurrency(weekPerCapita)}，${compare}；${topText}。`);
     }
     function renderWeeklyOwnerMtdBars(ownerMtdRows, currentGmv) {
       if (!ownerMtdRows.length) return `<div class="sub">暂无销售数据</div>`;
@@ -3302,7 +3487,7 @@
         const priorWidth = total ? row.priorGmv / total * 100 : 0;
         const orderNos = [...new Set(row.orderNos || [])];
         const orderDetail = `<div class="review-order-detail" data-review-order-detail hidden><div class="review-order-title"><span>订单号</span><span>${plainNumber(orderNos.length)} 笔</span></div><div class="review-order-list">${orderNos.length ? orderNos.map(orderNo => `<span class="review-order-pill">${orderNo}</span>`).join("") : `<span class="review-order-empty">暂无订单号</span>`}</div></div>`;
-        return `<div class="compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><div class="week-owner-mtd-bar" style="width:${barWidth}%"><i class="week-owner-mtd-prior" style="width:${priorWidth}%" title="非本周 ${exactCurrency(row.priorGmv)}" aria-label="非本周 ${exactCurrency(row.priorGmv)}"></i><i class="week-owner-mtd-current" style="width:${currentWidth}%" title="本周 ${exactCurrency(row.weekGmv)}" aria-label="本周 ${exactCurrency(row.weekGmv)}"></i></div></div><strong>${exactCurrency(total)}</strong></div><div class="rank-note"><span>直播/追单 ${exactCurrency(row.weekLive)} / ${exactCurrency(row.weekChase)}</span><span>承接 ${plainNumber(row.weekCarry)}</span></div>${orderDetail}</div>`;
+        return `<div class="compare-line is-clickable" data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"><div class="rank-row"><strong>${index + 1} ${row.name}</strong><div class="track"><div class="week-owner-mtd-bar" style="width:${barWidth}%"><i class="week-owner-mtd-prior" style="width:${priorWidth}%" title="非本周 ${exactCurrency(row.priorGmv)}" aria-label="非本周 ${exactCurrency(row.priorGmv)}"></i><i class="week-owner-mtd-current" style="width:${currentWidth}%" title="本周 ${exactCurrency(row.weekGmv)}" aria-label="本周 ${exactCurrency(row.weekGmv)}"></i></div></div><strong>${exactCurrency(total)}</strong></div><div class="weekly-owner-note"><span>直播/追单 ${exactCurrency(row.weekLive)} / ${exactCurrency(row.weekChase)}</span><span>本周承接 ${plainNumber(row.weekCarry)}</span><span>本月UP ${currency(row.up)}</span></div>${orderDetail}</div>`;
       }).join("");
     }
 
@@ -3324,8 +3509,7 @@
       const channelRows = completeRows(current.channels, CHANNELS, "gmv").filter(row => !isHiddenZeroWeeklyChannel(row));
       const ownerMtdRows = weeklyOwnerMtdRows(current);
       const ownerRows = ownerMtdRows.filter(isVisibleWeeklyOwner);
-      document.getElementById("week-source-stack").innerHTML = stackHtml(current.live, current.chase);
-      document.getElementById("week-source-total").textContent = currency(current.gmv);
+      renderWeeklySourceDonuts(current, channelRows);
       renderWeeklyDailyTargets(current);
       renderWeekThirtyDayTrend(current);
       renderWeeklyChannelConclusion(current, weekHistoryRows, channelRows);
