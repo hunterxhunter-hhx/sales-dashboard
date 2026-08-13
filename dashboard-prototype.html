@@ -908,6 +908,7 @@
       <button class="btn" type="button" data-tab="channel">渠道分析</button>
       <button class="btn" type="button" data-tab="sales">销售排名</button>
       <button class="btn" type="button" data-tab="actions">实验与行动</button>
+      <button class="btn" type="button" data-tab="youzan">有赞数据</button>
     </nav>
 
     <section class="page" data-page="today" aria-label="今日预测">
@@ -1160,6 +1161,37 @@
         </div>
       </div>
     </section>
+
+    <section class="page" data-page="youzan" aria-label="有赞数据">
+      <div class="section">
+        <div class="section-head">
+          <div>
+            <h2>有赞数据</h2>
+            <div class="sub">基于 `有赞数据.xlsx` 三张表的当月快照聚合结果，不修改原始数据</div>
+          </div>
+        </div>
+        <div class="viz-grid">
+          <div class="card viz-stat"><span class="text-muted">预估当月GMV</span><span class="viz-stat-value" id="youzan-card-month-gmv">0.00</span><span>来自月毛利-6</span></div>
+          <div class="card viz-stat"><span class="text-muted">预估当月毛利（除退款）</span><span class="viz-stat-value" id="youzan-card-month-profit">0.00</span><span>来自月毛利-6</span></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="two">
+          <div><h3>各SKU GMV</h3><div id="youzan-sku-gmv" class="mini-chart"></div></div>
+          <div><h3>各SKU 利润</h3><div id="youzan-sku-profit" class="mini-chart"></div></div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="two">
+          <div><h3>GMV在各商品类型中的分布</h3><div id="youzan-type-gmv" class="mini-chart"></div></div>
+          <div><h3>利润在各商品类型中的分布</h3><div id="youzan-type-profit" class="mini-chart"></div></div>
+        </div>
+      </div>
+      <div class="section">
+        <h3>每日GMV</h3>
+        <div id="youzan-daily" class="chart"></div>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -1167,6 +1199,7 @@
       carry: [],
       orders: [],
       forecastDetails: [],
+      youzan: { available: false, cards: {}, charts: {} },
       periods: { week: [], month: [], day: [] },
       selectedChannel: "",
       selectedTodayDate: "",
@@ -1310,6 +1343,9 @@
     }
     function exactCurrency(value) {
       return Math.round(number(value)).toLocaleString("zh-CN");
+    }
+    function money2(value) {
+      return number(value).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
     function wanCurrency(value) {
       return `${(number(value) / 10000).toFixed(1)}万`;
@@ -3672,6 +3708,84 @@
       document.getElementById("sales-channel-stack").innerHTML = rows.slice(0, 6).map(row => `<div class="rank-row"><span>${row.name}</span><div class="stackbar">${ownerChannelStack(row.name, month)}</div><span>${row.gmv ? "已归因" : "暂无"}</span></div>`).join("");
     }
 
+    function renderYouzan() {
+      const data = state.youzan || {};
+      const cards = data.cards || {};
+      const charts = data.charts || {};
+      const monthGmv = cards.estimated_month_gmv || 0;
+      const monthProfit = cards.estimated_month_profit || 0;
+      const monthGmvEl = document.getElementById("youzan-card-month-gmv");
+      const monthProfitEl = document.getElementById("youzan-card-month-profit");
+      if (monthGmvEl) monthGmvEl.textContent = money2(monthGmv);
+      if (monthProfitEl) monthProfitEl.textContent = money2(monthProfit);
+      renderSimpleBarChart("youzan-sku-gmv", charts.sku_gmv || [], "GMV", "#165DFF");
+      renderSimpleBarChart("youzan-sku-profit", charts.sku_profit || [], "利润", "#20C7B5");
+      renderSimplePieChart("youzan-type-gmv", charts.type_gmv || [], "GMV");
+      renderSimplePieChart("youzan-type-profit", charts.type_profit || [], "利润");
+      renderDailyYouzanChart("youzan-daily", charts.daily || []);
+    }
+
+    function renderSimpleBarChart(id, rows, metricLabel, color) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const chart = chartFor(id);
+      const data = rows.map(row => ({ name: text(row.name), value: number(row.value) }));
+      chart.setOption({
+        color: [color],
+        tooltip: { trigger: "axis", valueFormatter: value => money2(value) },
+        grid: { left: 50, right: 18, top: 24, bottom: 48, containLabel: true },
+        xAxis: { type: "category", data: data.map(row => row.name), axisLabel: { interval: 0, rotate: 20 } },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: [{ name: metricLabel, type: "bar", barWidth: 18, data: data.map(row => Math.round(row.value)) }]
+      }, true);
+    }
+
+    function renderSimplePieChart(id, rows, metricLabel) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const chart = chartFor(id);
+      const data = rows.map(row => ({ name: text(row.name), value: number(row.value) })).filter(row => row.value > 0);
+      chart.setOption({
+        color: ["#165DFF", "#20C7B5", "#F6B800", "#FF7A45", "#7B61FF", "#36B37E", "#E15D97", "#8B949E"],
+        tooltip: { trigger: "item", valueFormatter: value => money2(value) },
+        legend: { top: 0, type: "scroll" },
+        series: [{
+          name: metricLabel,
+          type: "pie",
+          radius: ["38%", "68%"],
+          avoidLabelOverlap: true,
+          label: { formatter: "{b}\n{d}%" },
+          data
+        }]
+      }, true);
+    }
+
+    function renderDailyYouzanChart(id, rows) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const chart = chartFor(id);
+      const data = rows.map(row => ({
+        date: text(row.date),
+        gmv: number(row.gmv),
+        profit: number(row.profit),
+        orders: number(row.orders)
+      }));
+      chart.setOption({
+        color: ["#165DFF"],
+        tooltip: { trigger: "axis", valueFormatter: value => money2(value) },
+        grid: { left: 50, right: 18, top: 24, bottom: 48, containLabel: true },
+        xAxis: { type: "category", data: data.map(row => row.date), axisLabel: { interval: 0, rotate: 20 } },
+        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        series: [{
+          name: "每日GMV",
+          type: "line",
+          smooth: true,
+          symbolSize: 6,
+          data: data.map(row => Math.round(row.gmv))
+        }]
+      }, true);
+    }
+
     function chartFor(id) {
       if (!state.charts[id]) state.charts[id] = echarts.init(document.getElementById(id));
       return state.charts[id];
@@ -3713,6 +3827,7 @@
       renderMonthly();
       renderChannel();
       renderSales();
+      renderYouzan();
       resizeCharts();
     }
 
@@ -3730,6 +3845,7 @@
       ]);
       normalizePayload(payload);
       normalizeForecastDetails(forecastDetails);
+      state.youzan = payload.youzan || { available: false, cards: {}, charts: {} };
       const imports = payload.sync?.imports || [];
       document.getElementById("data-status").textContent = imports.length ? `已同步：${imports.map(item => item.filename).join("、")}` : "源文件未变化，沿用最新同步结果";
       document.getElementById("source-badge").textContent = `承接${state.carry.length} · 订单${state.orders.length}`;

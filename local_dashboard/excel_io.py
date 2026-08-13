@@ -6,10 +6,10 @@ from typing import Any, Iterator
 from openpyxl import load_workbook
 
 
-def iter_xlsx_rows(path: Path) -> Iterator[dict[str, Any]]:
+def iter_xlsx_rows(path: Path, sheet_name: str | None = None) -> Iterator[dict[str, Any]]:
     workbook = load_workbook(path, read_only=True, data_only=True)
     try:
-        sheet = workbook[workbook.sheetnames[0]]
+        sheet = workbook[sheet_name] if sheet_name else workbook[workbook.sheetnames[0]]
         # Some exported workbooks contain a stale <dimension> of A1 even though
         # the sheet XML has all rows. In read_only mode openpyxl trusts that
         # cache unless dimensions are reset.

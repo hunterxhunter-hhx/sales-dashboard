@@ -150,6 +150,7 @@ def build_static_site() -> dict[str, int | str]:
         "owners": store.owner_breakdown(),
         "carry": store.carry_details(),
         "orders": store.order_details(limit=100000),
+        "youzan": store.youzan_summary(),
         "static_built_at": datetime.now().isoformat(timespec="seconds"),
     })
     forecast_payload = {

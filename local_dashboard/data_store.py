@@ -5,6 +5,7 @@ import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timedelta
+from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
@@ -40,6 +41,7 @@ SOURCE_FILE_SPECS = [
 
 FORECAST_DETAIL_FILENAME = "明细表.xlsx"
 CHANNEL_CLASSIFICATION_VERSION = 2
+YOUZAN_FILENAME = "有赞数据.xlsx"
 
 
 def safe_text(value: Any) -> str:
@@ -148,6 +150,25 @@ def apply_manual_remark_channel(channel: Any, manual_remark: Any) -> str:
 
 def is_activation_promoter(value: Any) -> bool:
     return safe_text(value) == "常丁健"
+
+
+def month_sort_key(value: Any) -> tuple[int, int, str]:
+    text_value = safe_text(value)
+    match = re.search(r"(\d{4})[^\d]?(\d{1,2})", text_value)
+    if match:
+        year = int(match.group(1))
+        month = int(match.group(2))
+        return year, month, text_value
+    date_text = parse_datetime(value)[:7]
+    if re.match(r"^\d{4}-\d{2}$", date_text):
+        year, month = date_text.split("-")
+        return int(year), int(month), text_value
+    return 0, 0, text_value
+
+
+def date_sort_key(value: Any) -> tuple[str, str]:
+    text_value = safe_text(value)
+    return text_value[:10], text_value
 
 
 def normalize_carry_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -358,6 +379,155 @@ class DashboardStore:
                 }
             )
         return rows
+
+    def youzan_summary(self, source_dir: Path | None = None) -> dict[str, Any]:
+        from .excel_io import iter_xlsx_rows
+
+        source_dir = Path(source_dir) if source_dir else self.source_dir()
+        path = None
+        for candidate in source_dir.iterdir():
+            if candidate.is_file() and candidate.suffix.lower() == ".xlsx" and "有赞" in candidate.name:
+                path = candidate
+                break
+        if path is None or not path.exists():
+            return {"available": False, "sheets": {}, "cards": {}, "charts": {}}
+
+        def as_number(value: Any) -> float:
+            if isinstance(value, (int, float)):
+                return float(value)
+            text_value = safe_text(value).replace(",", "")
+            if not text_value:
+                return 0.0
+            match = re.search(r"-?\d+(?:\.\d+)?", text_value)
+            if not match:
+                return 0.0
+            try:
+                return float(match.group(0))
+            except ValueError:
+                return 0.0
+
+        def safe_month(value: Any) -> str:
+            text = safe_text(value)
+            if not text:
+                return ""
+            if re.match(r"^\d{4}-\d{1,2}$", text):
+                year, month = text.split("-")
+                return f"{int(year):04d}-{int(month):02d}"
+            if re.match(r"^\d{4}/\d{1,2}$", text):
+                year, month = text.split("/")
+                return f"{int(year):04d}-{int(month):02d}"
+            parsed = parse_datetime(text)
+            return parsed[:7] if re.match(r"^\d{4}-\d{2}", parsed) else text
+
+        workbook_rows = {}
+        try:
+            from openpyxl import load_workbook
+
+            workbook = load_workbook(path, read_only=True, data_only=True)
+            try:
+                for sheet_name in workbook.sheetnames:
+                    sheet = workbook[sheet_name]
+                    if hasattr(sheet, "reset_dimensions"):
+                        sheet.reset_dimensions()
+                    rows = sheet.iter_rows(values_only=True)
+                    headers = [safe_text(value) for value in next(rows, [])]
+                    sheet_rows = []
+                    for values in rows:
+                        row = {}
+                        for index, header in enumerate(headers):
+                            if not header:
+                                continue
+                            row[header] = values[index] if index < len(values) else ""
+                        if any(value not in (None, "") for value in row.values()):
+                            sheet_rows.append(row)
+                    workbook_rows[sheet_name] = sheet_rows
+            finally:
+                workbook.close()
+        except Exception:
+            workbook_rows = {sheet_name: list(iter_xlsx_rows(path, sheet_name)) for sheet_name in ["CRM导出订单-6", "订单表-6", "月毛利-6"]}
+
+        crm_rows = workbook_rows.get("CRM导出订单-6", [])
+        order_rows = workbook_rows.get("订单表-6", [])
+        month_rows = workbook_rows.get("月毛利-6", [])
+
+        month_entries = []
+        for row in month_rows:
+            month_value = safe_month(pick(row, ["月份"]))
+            if not month_value:
+                continue
+            month_entries.append(
+                {
+                    "month": month_value,
+                    "gmv": as_number(pick(row, ["GMV（除退款）"])),
+                    "profit": as_number(pick(row, ["本月预估毛利（物流成本需月底核算）"])),
+                    "orders": as_number(pick(row, ["订单数"])),
+                }
+            )
+
+        latest_month_entry = None
+        if month_entries:
+            latest_month_entry = sorted(month_entries, key=lambda item: month_sort_key(item["month"]))[-1]
+
+        month_latest = latest_month_entry or {"month": "", "gmv": 0.0, "profit": 0.0, "orders": 0.0}
+        fallback_gmv = sum(as_number(pick(row, ["GMV（已减退款）"])) for row in order_rows)
+        if not month_latest["gmv"]:
+            month_latest["gmv"] = fallback_gmv
+
+        sku_gmv = defaultdict(float)
+        sku_profit = defaultdict(float)
+        type_gmv = defaultdict(float)
+        type_profit = defaultdict(float)
+        daily = defaultdict(lambda: {"gmv": 0.0, "profit": 0.0, "orders": 0})
+
+        for row in crm_rows:
+            sku = safe_text(pick(row, ["商品简称"])) or "未命名SKU"
+            gmv = as_number(pick(row, ["最终GMV（除退款）"]))
+            profit = as_number(pick(row, ["订单利润"]))
+            product_type = safe_text(pick(row, ["商品类型"])) or "未分类"
+            sku_gmv[sku] += gmv
+            sku_profit[sku] += profit
+            type_gmv[product_type] += gmv
+            type_profit[product_type] += profit
+
+        for row in order_rows:
+            day = safe_text(pick(row, ["付款日期"]))
+            if not day:
+                day = parse_datetime(pick(row, ["付款时间"]))[:10]
+            if not day:
+                continue
+            bucket = daily[day]
+            bucket["gmv"] += as_number(pick(row, ["GMV（已减退款）"]))
+            bucket["profit"] += as_number(pick(row, ["预估利润（物流成本月末核算）"]))
+            bucket["orders"] += 1
+
+        def top_n_map(source: dict[str, float], limit: int = 10) -> list[dict[str, Any]]:
+            items = sorted(source.items(), key=lambda item: (-item[1], item[0]))
+            return [{"name": name, "value": round(value, 2)} for name, value in items[:limit]]
+
+        daily_rows = [
+            {"date": date, "gmv": values["gmv"], "profit": values["profit"], "orders": values["orders"]}
+            for date, values in sorted(daily.items(), key=lambda item: date_sort_key(item[0]))
+        ]
+
+        return {
+            "available": True,
+            "sheets": {
+                "crm": {"sheet": "CRM导出订单-6", "rows": len(crm_rows)},
+                "orders": {"sheet": "订单表-6", "rows": len(order_rows)},
+                "month": {"sheet": "月毛利-6", "rows": len(month_rows)},
+            },
+            "cards": {
+                "estimated_month_gmv": round(month_latest["gmv"], 2),
+                "estimated_month_profit": round(month_latest["profit"], 2),
+            },
+            "charts": {
+                "sku_gmv": top_n_map(sku_gmv, 10),
+                "sku_profit": top_n_map(sku_profit, 10),
+                "type_gmv": [{"name": name, "value": round(value, 2)} for name, value in sorted(type_gmv.items(), key=lambda item: (-item[1], item[0]))],
+                "type_profit": [{"name": name, "value": round(value, 2)} for name, value in sorted(type_profit.items(), key=lambda item: (-item[1], item[0]))],
+                "daily": daily_rows,
+            },
+        }
 
     def _tracked_source(self, conn: sqlite3.Connection, data_type: str) -> sqlite3.Row | None:
         return conn.execute(
