@@ -16,6 +16,7 @@ def main() -> int:
     sku_summary = tables.get("sku_summary") or []
     required_html = [
         "youzan-top-products",
+        "GMV前五",
         "youzan-edit-note",
         'data-local-edit="youzan-note"',
         "youzan-sku-table",
@@ -24,6 +25,9 @@ def main() -> int:
         "renderYouzanTopProducts",
         "renderYouzanSkuTable",
         "renderYouzanTypeList",
+        'xAxis: { type: "value"',
+        'yAxis: { type: "category"',
+        "label: { show: true, position: \"right\"",
     ]
 
     failures = []

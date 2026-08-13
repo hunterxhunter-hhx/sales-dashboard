@@ -745,6 +745,23 @@
       display: grid;
       gap: 8px;
     }
+    .youzan-top-products-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--foreground);
+      font-size: 14px;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+    }
+    .youzan-top-products-title::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary);
+      box-shadow: 0 0 0 4px rgba(22, 93, 255, 0.10);
+    }
     .youzan-product-row {
       display: grid;
       grid-template-columns: 22px minmax(0, 1fr) auto;
@@ -1297,7 +1314,7 @@
             <span>来自月毛利-6</span>
           </div>
         </div>
-        <div class="youzan-top-products" id="youzan-top-products"></div>
+        <div class="youzan-top-products"><div class="youzan-top-products-title">GMV前五</div><div id="youzan-top-products"></div></div>
         <div class="youzan-edit-note" id="youzan-edit-note" contenteditable="true" data-local-edit="youzan-note">可在这里补充本周有赞商品结构、爆品原因或下周动作。</div>
       </div>
       <div class="section">
@@ -3923,14 +3940,29 @@
       const el = document.getElementById(id);
       if (!el) return;
       const chart = chartFor(id);
-      const data = rows.map(row => ({ name: text(row.name), value: number(row.value) }));
+      const data = rows.map(row => ({ name: text(row.name), value: number(row.value) })).reverse();
       chart.setOption({
         color: [color],
         tooltip: { trigger: "axis", valueFormatter: value => money2(value) },
-        grid: { left: 50, right: 18, top: 24, bottom: 48, containLabel: true },
-        xAxis: { type: "category", data: data.map(row => row.name), axisLabel: { interval: 0, rotate: 20 } },
-        yAxis: { type: "value", min: 0, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
-        series: [{ name: metricLabel, type: "bar", barWidth: 18, data: data.map(row => Math.round(row.value)) }]
+        legend: {
+          show: true,
+          top: 0,
+          left: 0,
+          itemWidth: 10,
+          itemHeight: 10,
+          textStyle: { color: "rgba(26,28,31,.56)", fontSize: 12 }
+        },
+        grid: { left: 78, right: 96, top: 34, bottom: 8, containLabel: false },
+        xAxis: { type: "value", min: 0, axisLabel: { show: false }, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: "rgba(26,28,31,.08)" } } },
+        yAxis: { type: "category", data: data.map(row => row.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "rgba(26,28,31,.48)", fontSize: 12, width: 68, overflow: "truncate" } },
+        series: [{
+          name: metricLabel,
+          type: "bar",
+          barWidth: 16,
+          data: data.map(row => Number(row.value.toFixed(2))),
+          itemStyle: { borderRadius: [3, 3, 3, 3] },
+          label: { show: true, position: "right", color, fontSize: 13, fontWeight: 650, formatter: item => `¥${money2(item.value)}` }
+        }]
       }, true);
     }
 
