@@ -504,6 +504,34 @@ class DashboardStore:
             items = sorted(source.items(), key=lambda item: (-item[1], item[0]))
             return [{"name": name, "value": round(value, 2)} for name, value in items[:limit]]
 
+        def sku_summary_rows(limit: int = 5) -> list[dict[str, Any]]:
+            total_gmv = sum(sku_gmv.values())
+            total_profit = sum(sku_profit.values())
+            rows = []
+            for name, gmv in sorted(sku_gmv.items(), key=lambda item: (-item[1], item[0]))[:limit]:
+                profit = sku_profit.get(name, 0.0)
+                rows.append(
+                    {
+                        "name": name,
+                        "gmv": round(gmv, 2),
+                        "gmv_share": round((gmv / total_gmv * 100) if total_gmv else 0.0, 2),
+                        "profit": round(profit, 2),
+                        "profit_share": round((profit / total_profit * 100) if total_profit else 0.0, 2),
+                        "is_total": False,
+                    }
+                )
+            rows.append(
+                {
+                    "name": "总计",
+                    "gmv": round(total_gmv, 2),
+                    "gmv_share": 100.0 if total_gmv else 0.0,
+                    "profit": round(total_profit, 2),
+                    "profit_share": 100.0 if total_profit else 0.0,
+                    "is_total": True,
+                }
+            )
+            return rows
+
         daily_rows = [
             {"date": date, "gmv": values["gmv"], "profit": values["profit"], "orders": values["orders"]}
             for date, values in sorted(daily.items(), key=lambda item: date_sort_key(item[0]))
@@ -526,6 +554,9 @@ class DashboardStore:
                 "type_gmv": [{"name": name, "value": round(value, 2)} for name, value in sorted(type_gmv.items(), key=lambda item: (-item[1], item[0]))],
                 "type_profit": [{"name": name, "value": round(value, 2)} for name, value in sorted(type_profit.items(), key=lambda item: (-item[1], item[0]))],
                 "daily": daily_rows,
+            },
+            "tables": {
+                "sku_summary": sku_summary_rows(5),
             },
         }
 

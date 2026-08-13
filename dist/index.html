@@ -735,6 +735,121 @@
       box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.10);
       background: rgba(255, 255, 255, 0.96);
     }
+    .youzan-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .youzan-top-products {
+      margin-top: 10px;
+      display: grid;
+      gap: 8px;
+    }
+    .youzan-product-row {
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.035);
+      color: var(--muted-foreground);
+      font-size: 12px;
+    }
+    .youzan-product-row i {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: rgba(22, 93, 255, 0.10);
+      color: var(--primary);
+      font-style: normal;
+      font-weight: 750;
+      font-size: 11px;
+    }
+    .youzan-product-row strong {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--foreground);
+      font-size: 13px;
+      font-weight: 680;
+    }
+    .youzan-edit-note {
+      margin-top: 10px;
+      min-height: 58px;
+      padding: 10px 12px;
+      border: 1px solid rgba(22, 93, 255, 0.14);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(22, 93, 255, 0.08), rgba(255, 255, 255, 0.90));
+      color: var(--muted-foreground);
+      font-size: 13px;
+      line-height: 1.55;
+      outline: none;
+    }
+    .youzan-edit-note:focus {
+      border-color: rgba(22, 93, 255, 0.46);
+      box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.09);
+      background: rgba(255, 255, 255, 0.98);
+      color: var(--foreground);
+    }
+    .youzan-chart-card {
+      min-width: 0;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .youzan-donut-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(180px, 0.9fr);
+      gap: 8px;
+      align-items: center;
+    }
+    .youzan-type-list {
+      display: grid;
+      gap: 7px;
+      font-size: 12px;
+    }
+    .youzan-type-item {
+      display: grid;
+      grid-template-columns: 8px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.035);
+      color: var(--muted-foreground);
+    }
+    .youzan-type-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .youzan-type-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: var(--foreground);
+      font-weight: 650;
+    }
+    .youzan-summary-table th {
+      background: linear-gradient(180deg, #fff8ad, #fff04d);
+      color: #1a1c1f;
+      font-weight: 750;
+      text-align: center;
+    }
+    .youzan-summary-table td { text-align: center; }
+    .youzan-summary-table td:first-child {
+      text-align: left;
+      font-weight: 650;
+    }
+    .youzan-summary-table .total-row td {
+      background: rgba(22, 93, 255, 0.06);
+      font-weight: 750;
+    }
     .weekly-source-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1170,21 +1285,49 @@
             <div class="sub">基于 `有赞数据.xlsx` 三张表的当月快照聚合结果，不修改原始数据</div>
           </div>
         </div>
-        <div class="viz-grid">
-          <div class="card viz-stat"><span class="text-muted">预估当月GMV</span><span class="viz-stat-value" id="youzan-card-month-gmv">0.00</span><span>来自月毛利-6</span></div>
-          <div class="card viz-stat"><span class="text-muted">预估当月毛利（除退款）</span><span class="viz-stat-value" id="youzan-card-month-profit">0.00</span><span>来自月毛利-6</span></div>
+        <div class="youzan-kpi-grid">
+          <div class="card viz-stat">
+            <span class="text-muted">预估当月GMV</span>
+            <span class="viz-stat-value" id="youzan-card-month-gmv">0.00</span>
+            <span>来自月毛利-6</span>
+          </div>
+          <div class="card viz-stat">
+            <span class="text-muted">预估当月毛利（除退款）</span>
+            <span class="viz-stat-value" id="youzan-card-month-profit">0.00</span>
+            <span>来自月毛利-6</span>
+          </div>
+        </div>
+        <div class="youzan-top-products" id="youzan-top-products"></div>
+        <div class="youzan-edit-note" id="youzan-edit-note" contenteditable="true" data-local-edit="youzan-note">可在这里补充本周有赞商品结构、爆品原因或下周动作。</div>
+      </div>
+      <div class="section">
+        <div class="two">
+          <div class="youzan-chart-card"><h3>各SKU GMV</h3><div id="youzan-sku-gmv" class="mini-chart"></div></div>
+          <div class="youzan-chart-card"><h3>各SKU 利润</h3><div id="youzan-sku-profit" class="mini-chart"></div></div>
+        </div>
+        <div class="table-responsive" style="margin-top:12px">
+          <table class="youzan-summary-table">
+            <thead><tr><th>商品</th><th>GMV产出</th><th>占比</th><th>利润产出</th><th>占比</th></tr></thead>
+            <tbody id="youzan-sku-table"></tbody>
+          </table>
         </div>
       </div>
       <div class="section">
         <div class="two">
-          <div><h3>各SKU GMV</h3><div id="youzan-sku-gmv" class="mini-chart"></div></div>
-          <div><h3>各SKU 利润</h3><div id="youzan-sku-profit" class="mini-chart"></div></div>
-        </div>
-      </div>
-      <div class="section">
-        <div class="two">
-          <div><h3>GMV在各商品类型中的分布</h3><div id="youzan-type-gmv" class="mini-chart"></div></div>
-          <div><h3>利润在各商品类型中的分布</h3><div id="youzan-type-profit" class="mini-chart"></div></div>
+          <div class="youzan-chart-card">
+            <h3>GMV在各商品类型中的分布</h3>
+            <div class="youzan-donut-layout">
+              <div id="youzan-type-gmv" class="mini-chart"></div>
+              <div class="youzan-type-list" id="youzan-type-gmv-list"></div>
+            </div>
+          </div>
+          <div class="youzan-chart-card">
+            <h3>利润在各商品类型中的分布</h3>
+            <div class="youzan-donut-layout">
+              <div id="youzan-type-profit" class="mini-chart"></div>
+              <div class="youzan-type-list" id="youzan-type-profit-list"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="section">
@@ -1347,11 +1490,22 @@
     function money2(value) {
       return number(value).toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
+    function pct2(value) {
+      return `${number(value).toFixed(2)}%`;
+    }
     function wanCurrency(value) {
       return `${(number(value) / 10000).toFixed(1)}万`;
     }
     function plainNumber(value) { return Math.round(number(value)).toLocaleString("zh-CN"); }
     function percent(value) { return `${number(value).toFixed(1)}%`; }
+    function escapeHtml(value) {
+      return text(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
     function sameMonth(left, right) { return monthKey(left) && monthKey(left) === monthKey(right); }
     function changeText(current, previous) {
       if (!previous) return "无上期";
@@ -1738,6 +1892,14 @@
           const key = `${node.id}:${state.selectedWeek || "latest"}`;
           state.weeklyConclusionEdits[key] = node.innerHTML;
         });
+      });
+      root.querySelectorAll("[data-local-edit]").forEach(node => {
+        if (node.dataset.bound === "1") return;
+        node.dataset.bound = "1";
+        const key = node.dataset.localEdit;
+        const saved = localStorage.getItem(key);
+        if (saved !== null) node.innerHTML = saved;
+        node.addEventListener("input", () => localStorage.setItem(key, node.innerHTML));
       });
     }
 
@@ -3712,17 +3874,49 @@
       const data = state.youzan || {};
       const cards = data.cards || {};
       const charts = data.charts || {};
+      const tables = data.tables || {};
       const monthGmv = cards.estimated_month_gmv || 0;
       const monthProfit = cards.estimated_month_profit || 0;
       const monthGmvEl = document.getElementById("youzan-card-month-gmv");
       const monthProfitEl = document.getElementById("youzan-card-month-profit");
       if (monthGmvEl) monthGmvEl.textContent = money2(monthGmv);
       if (monthProfitEl) monthProfitEl.textContent = money2(monthProfit);
+      renderYouzanTopProducts(tables.sku_summary || []);
+      renderYouzanSkuTable(tables.sku_summary || []);
       renderSimpleBarChart("youzan-sku-gmv", charts.sku_gmv || [], "GMV", "#165DFF");
       renderSimpleBarChart("youzan-sku-profit", charts.sku_profit || [], "利润", "#20C7B5");
       renderSimplePieChart("youzan-type-gmv", charts.type_gmv || [], "GMV");
       renderSimplePieChart("youzan-type-profit", charts.type_profit || [], "利润");
+      renderYouzanTypeList("youzan-type-gmv-list", charts.type_gmv || []);
+      renderYouzanTypeList("youzan-type-profit-list", charts.type_profit || []);
       renderDailyYouzanChart("youzan-daily", charts.daily || []);
+    }
+
+    function renderYouzanTopProducts(rows) {
+      const el = document.getElementById("youzan-top-products");
+      if (!el) return;
+      const top = rows.filter(row => !row.is_total).slice(0, 5);
+      el.innerHTML = top.length ? top.map((row, index) => `
+        <div class="youzan-product-row">
+          <i>${index + 1}</i>
+          <strong title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</strong>
+          <span>GMV ${money2(row.gmv)} · ${pct2(row.gmv_share)}</span>
+        </div>
+      `).join("") : `<div class="sub">暂无商品GMV数据</div>`;
+    }
+
+    function renderYouzanSkuTable(rows) {
+      const el = document.getElementById("youzan-sku-table");
+      if (!el) return;
+      el.innerHTML = rows.length ? rows.map(row => `
+        <tr class="${row.is_total ? "total-row" : ""}">
+          <td>${escapeHtml(row.name)}</td>
+          <td>${money2(row.gmv)}</td>
+          <td>${pct2(row.gmv_share)}</td>
+          <td>${money2(row.profit)}</td>
+          <td>${pct2(row.profit_share)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="5">暂无SKU汇总数据</td></tr>`;
     }
 
     function renderSimpleBarChart(id, rows, metricLabel, color) {
@@ -3745,19 +3939,55 @@
       if (!el) return;
       const chart = chartFor(id);
       const data = rows.map(row => ({ name: text(row.name), value: number(row.value) })).filter(row => row.value > 0);
+      const total = data.reduce((sum, row) => sum + row.value, 0);
+      const leader = data[0];
       chart.setOption({
         color: ["#165DFF", "#20C7B5", "#F6B800", "#FF7A45", "#7B61FF", "#36B37E", "#E15D97", "#8B949E"],
-        tooltip: { trigger: "item", valueFormatter: value => money2(value) },
-        legend: { top: 0, type: "scroll" },
+        tooltip: {
+          trigger: "item",
+          formatter: item => `${escapeHtml(item.name)}<br/>${metricLabel}：${money2(item.value)}<br/>占比：${item.percent.toFixed(2)}%`
+        },
+        legend: { show: false },
+        graphic: leader ? [{
+          type: "text",
+          left: "center",
+          top: "center",
+          style: {
+            text: `${leader.name}\n${total ? (leader.value / total * 100).toFixed(1) : "0.0"}%`,
+            textAlign: "center",
+            fill: "#1a1c1f",
+            fontSize: 12,
+            fontWeight: 700,
+            lineHeight: 18
+          }
+        }] : [],
         series: [{
           name: metricLabel,
           type: "pie",
-          radius: ["38%", "68%"],
+          radius: ["52%", "74%"],
+          center: ["50%", "52%"],
           avoidLabelOverlap: true,
-          label: { formatter: "{b}\n{d}%" },
+          label: { show: false },
+          labelLine: { show: false },
+          minAngle: 3,
           data
         }]
       }, true);
+    }
+
+    function renderYouzanTypeList(id, rows) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const colors = ["#165DFF", "#20C7B5", "#F6B800", "#FF7A45", "#7B61FF", "#36B37E", "#E15D97", "#8B949E"];
+      const data = rows.map(row => ({ name: text(row.name), value: number(row.value) })).filter(row => row.value > 0);
+      const total = data.reduce((sum, row) => sum + row.value, 0);
+      el.innerHTML = data.map((row, index) => `
+        <div class="youzan-type-item">
+          <i class="youzan-type-dot" style="background:${colors[index % colors.length]}"></i>
+          <span class="youzan-type-name" title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
+          <span>${total ? (row.value / total * 100).toFixed(2) : "0.00"}%</span>
+        </div>
+      `).join("") || `<div class="sub">暂无分类数据</div>`;
     }
 
     function renderDailyYouzanChart(id, rows) {
