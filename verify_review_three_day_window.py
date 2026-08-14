@@ -10,7 +10,6 @@ required_tokens = [
     "function cohortCarryUsers",
     "function reviewWindowActuals",
     "function reviewCurrentPrediction",
-    "function distributePredictionToOwners",
     "function renderReviewCurrentLines",
     "function renderReviewFunnel",
     "review-current-predict-channel",
@@ -19,19 +18,16 @@ required_tokens = [
     "review-current-actual-owner",
     "review-predict-funnel",
     "review-actual-funnel",
+    "review-conversion-date-selector",
     "当期预测",
     "往期预测",
     "当期实际",
     "往期实际",
-    "追单预测",
-    "直播间预测",
-    "追单实际",
-    "直播间实际",
-    "3个工作日",
+    "工作日窗口",
 ]
 
 missing = [token for token in required_tokens if token not in html]
-assert not missing, "Missing review three-day window tokens: " + ", ".join(missing)
+assert not missing, "Missing review workday window tokens: " + ", ".join(missing)
 
 for forbidden in [
     "review-channel-gap",
@@ -42,6 +38,10 @@ for forbidden in [
     "当期直播间实际",
     "昨日追单预测",
     "昨日追单实际",
+    "review-predicted-chase",
+    "review-predicted-live",
+    "review-actual-chase",
+    "review-actual-live",
 ]:
     assert forbidden not in html, f"Forbidden old review token remains: {forbidden}"
 
@@ -49,8 +49,8 @@ assert "orderDate >= start && orderDate <= end" not in html
 assert "window.days.some(day => sameDate(orderDate, day))" in html
 assert "function userKeyForOrder(order)" in html
 assert "text(order.wxid || order.userId)" in html
-assert "const user = currentMeta.get(orderKey)" in html
-assert "pastIds.has(orderKey)" in html
-assert "predictionOwners[index].orders = allocation" in html
+assert "const window = businessDayWindow(conversionDate, 3)" in html
+assert "const currentUsers = cohortCarryUsers(carryDate, \"current\")" in html
+assert "const pastUsers = cohortCarryUsers(carryDate, \"past\")" in html
 
-print("review business-day window compatibility checks passed")
+print("review workday window compatibility checks passed")

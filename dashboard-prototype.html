@@ -77,6 +77,8 @@
     .sub, .text-muted { color: var(--muted-foreground); }
     .text-small { font-size: 12px; }
     .viz-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .date-filter { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+    .date-filter span { font-size: 11px; color: var(--muted-foreground); font-weight: 700; letter-spacing: 0.02em; }
     .viz-badge {
       display: inline-flex;
       align-items: center;
@@ -1052,16 +1054,17 @@
             <div class="sub" id="today-source-summary">等待本地数据加载。</div>
           </div>
           <div class="viz-row">
-            <select id="today-date-selector" aria-label="选择今日预测日期"></select>
+            <label class="date-filter"><span>承接日期</span><select id="today-date-selector" aria-label="选择承接日期"></select></label>
+            <label class="date-filter"><span>转化日期</span><select id="today-conversion-date-selector" aria-label="选择转化日期"></select></label>
             <span class="viz-badge" id="today-workday">第0 / 0个工作日</span>
           </div>
         </div>
         <div class="viz-grid today-kpis">
           <div class="card viz-stat"><span class="text-muted">本月当前GMV</span><span class="viz-stat-value" id="today-month-gmv">0</span><span>预测日期所在月累计</span></div>
           <div class="card viz-stat"><span class="text-muted">今日应销转</span><span class="viz-stat-value" id="today-predicted-carry">0</span><span>承接表最新一日实际承接</span></div>
-          <div class="card viz-stat"><span class="text-muted">往期追单预测</span><span class="viz-stat-value" id="today-chase-predicted-gmv">0单</span><span id="today-chase-predicted-text">GMV 0</span></div>
-          <div class="card viz-stat"><span class="text-muted">当期直播预测</span><span class="viz-stat-value" id="today-live-predicted-gmv">0单</span><span id="today-live-predicted-text">GMV 0</span></div>
-          <div class="card viz-stat"><span class="text-muted">今日预测UP</span><span class="viz-stat-value" id="today-predicted-up">0</span><span>按渠道历史UP估算</span></div>
+          <div class="card viz-stat"><span class="text-muted">往期预测</span><span class="viz-stat-value" id="today-chase-predicted-gmv">0单</span><span id="today-chase-predicted-text">GMV 0</span></div>
+          <div class="card viz-stat"><span class="text-muted">当期预测</span><span class="viz-stat-value" id="today-live-predicted-gmv">0单</span><span id="today-live-predicted-text">GMV 0</span></div>
+          <div class="card viz-stat"><span class="text-muted">今日预测UP</span><span class="viz-stat-value" id="today-predicted-up">0</span><span>预测GMV / 应销转</span></div>
         </div>
         <div class="two" style="margin-top:14px">
           <div>
@@ -1109,9 +1112,10 @@
     <section class="page" data-page="review" aria-label="昨日复盘">
       <div class="section">
         <div class="section-head">
-          <div><h2>昨日复盘：实际对预测</h2><div class="sub">预测来自今日预测同一历史模型，实际来自承接表和订单表</div></div>
+          <div><h2>昨日复盘：实际对预测</h2><div class="sub">预测来自今日预测同一day1/day2/day3模型，实际来自承接表和订单表</div></div>
           <div class="viz-row">
-            <select id="review-date-selector" aria-label="选择复盘日期"></select>
+            <label class="date-filter"><span>承接日期</span><select id="review-date-selector" aria-label="选择承接日期"></select></label>
+            <label class="date-filter"><span>转化日期</span><select id="review-conversion-date-selector" aria-label="选择转化日期"></select></label>
             <span class="viz-badge" id="review-date">最新完整日</span>
           </div>
         </div>
@@ -1123,21 +1127,19 @@
               <div class="compare-kpi">预测UP<strong id="review-predicted-up">0</strong></div>
               <div class="compare-kpi">预测承接<strong id="review-predicted-carry">0</strong></div>
               <div class="compare-kpi">预测转化<strong id="review-predicted-conversion">0</strong></div>
-              <div class="compare-kpi">追单预测<strong id="review-predicted-chase">0</strong></div>
-              <div class="compare-kpi">直播间预测<strong id="review-predicted-live">0</strong></div>
               <div class="compare-kpi">当期预测<strong id="review-current-predicted">0</strong></div>
               <div class="compare-kpi">往期预测<strong id="review-past-predicted">0</strong></div>
             </div>
             <div id="review-predict-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期预测</strong><span>归属日承接用户在 3 个工作日内的订单预测</span></div>
+                <div class="review-split-title live-title"><strong>当期预测</strong><span>承接日期用户在转化窗口 day1 的订单预测</span></div>
                 <div class="review-angle-title">渠道角度</div>
                 <div id="review-current-predict-channel"></div>
                 <div class="review-angle-title owner-angle">销售角度</div>
                 <div id="review-current-predict-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期预测</strong><span>历史用户在 3 个工作日内的转化预测</span></div>
+                <div class="review-split-title chase-title"><strong>往期预测</strong><span>day2 / day3 与往期平均订单数共同估算</span></div>
                 <div id="review-predict-funnel"></div>
               </div>
             </div>
@@ -1149,21 +1151,19 @@
               <div class="compare-kpi">实际UP<strong id="review-up">0</strong></div>
               <div class="compare-kpi">实际承接<strong id="review-carry">0</strong></div>
               <div class="compare-kpi">实际转化<strong id="review-conv">0</strong></div>
-              <div class="compare-kpi">追单实际<strong id="review-actual-chase">0</strong></div>
-              <div class="compare-kpi">直播间实际<strong id="review-actual-live">0</strong></div>
               <div class="compare-kpi">当期实际<strong id="review-current-actual">0</strong></div>
               <div class="compare-kpi">往期实际<strong id="review-past-actual">0</strong></div>
             </div>
             <div id="review-actual-lines">
               <div class="review-split-block">
-                <div class="review-split-title live-title"><strong>当期实际</strong><span>归属日承接用户在 3 个工作日内的实际订单</span></div>
+                <div class="review-split-title live-title"><strong>当期实际</strong><span>承接日期用户在转化窗口 day1/day2/day3 的实际订单</span></div>
                 <div class="review-angle-title">渠道角度</div>
                 <div id="review-current-actual-channel"></div>
                 <div class="review-angle-title owner-angle">销售角度</div>
                 <div id="review-current-actual-owner"></div>
               </div>
               <div class="review-split-block">
-                <div class="review-split-title chase-title"><strong>往期实际</strong><span>历史用户在 3 个工作日内的实际订单</span></div>
+                <div class="review-split-title chase-title"><strong>往期实际</strong><span>非当期承接用户在同一转化窗口的实际订单</span></div>
                 <div id="review-actual-funnel"></div>
               </div>
             </div>
@@ -1362,8 +1362,10 @@
       youzan: { available: false, cards: {}, charts: {} },
       periods: { week: [], month: [], day: [] },
       selectedChannel: "",
-      selectedTodayDate: "",
-      selectedReviewDate: "",
+      selectedTodayCarryDate: "",
+      selectedTodayConversionDate: "",
+      selectedReviewCarryDate: "",
+      selectedReviewConversionDate: "",
       selectedWeek: "",
       selectedMonth: "",
       weeklyConclusionEdits: {},
@@ -1376,6 +1378,7 @@
     const COLORS = ["#339cff", "#f3883b", "#5dc977", "#eb77b1", "#9b79ec", "#3ab9b1", "#8aa0b6", "#c7cdd4"];
     const MONTH_TARGETS = [1000000, 1500000, 2000000];
     const ORDER_UNIT_PRICE = 2980;
+    const PAST_AVERAGE_ORDER_COUNT = 1;
     const OWNER_CONVERSION_RATE = {
       "吴秋禅": 0.0310,
       "祁春如": 0.0104,
@@ -1395,6 +1398,18 @@
       "2-公号-引流": 0.0049,
       "1-挂图承接【私域部】": 0.0016
     };
+    const DAY_RATE_TABLE = {
+      overall: { day1: 0.003, day2: 0.001, day3: 0.001 },
+      channels: {
+        "1-挂图承接【私域部】": { day1: 0.001, day2: 0.000, day3: 0.000 },
+        "2-公号-引流": { day1: 0.001, day2: 0.001, day3: 0.000 },
+        "2-企微-回捞": { day1: 0.005, day2: 0.001, day3: 0.001 },
+        "2-企微-询课": { day1: 0.016, day2: 0.012, day3: 0.007 },
+        "2-有赞-下单": { day1: 0.008, day2: 0.003, day3: 0.000 },
+        "2-视频号-下单": { day1: 0.001, day2: 0.001, day3: 0.003 }
+      }
+    };
+    const REVIEW_CHANNEL_PRIORITY = ["2-企微-回捞", "2-企微-询课", "2-公号-引流", "2-有赞-下单", "2-视频号-下单", "一转", "激活组", "1-挂图承接【私域部】"];
     const CHANNEL_ORDER_PROBABILITY = {
       "2-企微-回捞": [
         { bucket: "0", probabilities: { 0: 1 } },
@@ -1745,7 +1760,7 @@
       return ["缺失渠道", "冲突渠道", "待补录", "待归因"].includes(value) || value.includes("缺失") || value.includes("冲突") || value.includes("待");
     }
     function isPredictableChannel(name) {
-      return !isTailChannel(name);
+      return !!dayRateChannelName(name);
     }
     function tailDimensionNames(names) {
       const unique = [...new Set(names.filter(Boolean))];
@@ -1879,6 +1894,30 @@
       if (name.includes("待")) return "待补录";
       return name.slice(0, 2);
     }
+    function dayRateChannelName(channel) {
+      const raw = text(channel);
+      if (DAY_RATE_TABLE.channels[raw]) return raw;
+      const short = shortChannel(raw);
+      return Object.keys(DAY_RATE_TABLE.channels).find(name => shortChannel(name) === short) || "";
+    }
+    function dayRateForChannel(channel) {
+      const name = dayRateChannelName(channel);
+      return name ? DAY_RATE_TABLE.channels[name] : null;
+    }
+    function dayRateForOverall() {
+      return DAY_RATE_TABLE.overall;
+    }
+    function orderedReviewChannelNames(names) {
+      const unique = [...new Set(names.filter(Boolean))];
+      return unique.sort((left, right) => {
+        const leftIndex = REVIEW_CHANNEL_PRIORITY.findIndex(name => shortChannel(name) === shortChannel(left));
+        const rightIndex = REVIEW_CHANNEL_PRIORITY.findIndex(name => shortChannel(name) === shortChannel(right));
+        const leftRank = leftIndex === -1 ? REVIEW_CHANNEL_PRIORITY.length + 10 : leftIndex;
+        const rightRank = rightIndex === -1 ? REVIEW_CHANNEL_PRIORITY.length + 10 : rightIndex;
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        return shortChannel(left).localeCompare(shortChannel(right), "zh-CN");
+      });
+    }
     function isMissingChannel(name) {
       return shortChannel(text(name)) === "缺失";
     }
@@ -1971,36 +2010,86 @@
       }
       return selector.value;
     }
-    function renderTodayDateSelector() {
-      const fallback = latestCarryDate() || latestOrderDate();
-      const keys = carryDateKeys();
-      const fallbackKey = formatDate(fallback);
-      if (!state.selectedTodayDate || (keys.length && !keys.includes(state.selectedTodayDate))) {
-        state.selectedTodayDate = keys.includes(fallbackKey) ? fallbackKey : (keys[keys.length - 1] || fallbackKey);
+    function allDateKeys() {
+      return uniqueDateKeys([
+        ...(state.carry || []).map(row => row.addTime),
+        ...(state.orders || []).map(row => row.orderTime),
+        ...((state.periods.day || []).map(row => row.date))
+      ]);
+    }
+    function todayCarryFallbackDate() {
+      return latestCarryDate() || latestOrderDate();
+    }
+    function todayConversionFallbackDate() {
+      return todayCarryFallbackDate();
+    }
+    function reviewCarryFallbackDate() {
+      return previousOrderDate(dateFromKey(state.selectedTodayCarryDate, latestCarryDate() || latestOrderDate()));
+    }
+    function reviewConversionFallbackDate() {
+      return reviewCarryFallbackDate();
+    }
+    function renderTodayDateSelectors() {
+      const carryFallback = todayCarryFallbackDate();
+      const carryKeys = carryDateKeys();
+      const carryFallbackKey = formatDate(carryFallback);
+      if (!state.selectedTodayCarryDate || (carryKeys.length && !carryKeys.includes(state.selectedTodayCarryDate))) {
+        state.selectedTodayCarryDate = carryKeys.includes(carryFallbackKey) ? carryFallbackKey : (carryKeys[carryKeys.length - 1] || carryFallbackKey);
       }
-      setDateSelector(document.getElementById("today-date-selector"), keys, state.selectedTodayDate, "暂无承接日期", value => {
-        state.selectedTodayDate = value;
+      const conversionFallback = todayConversionFallbackDate();
+      const conversionKeys = allDateKeys();
+      const conversionFallbackKey = formatDate(conversionFallback);
+      if (!state.selectedTodayConversionDate || (conversionKeys.length && !conversionKeys.includes(state.selectedTodayConversionDate))) {
+        state.selectedTodayConversionDate = conversionKeys.includes(conversionFallbackKey) ? conversionFallbackKey : (conversionKeys[conversionKeys.length - 1] || conversionFallbackKey);
+      }
+      setDateSelector(document.getElementById("today-date-selector"), carryKeys, state.selectedTodayCarryDate, "暂无承接日期", value => {
+        state.selectedTodayCarryDate = value;
         renderToday();
         resizeCharts();
       });
-      return dateFromKey(state.selectedTodayDate, fallback);
+      setDateSelector(document.getElementById("today-conversion-date-selector"), conversionKeys, state.selectedTodayConversionDate, "暂无转化日期", value => {
+        state.selectedTodayConversionDate = value;
+        renderToday();
+        resizeCharts();
+      });
+      return {
+        carryDate: dateFromKey(state.selectedTodayCarryDate, carryFallback),
+        conversionDate: dateFromKey(state.selectedTodayConversionDate, conversionFallback)
+      };
     }
-    function defaultReviewDate() {
-      return previousOrderDate(dateFromKey(state.selectedTodayDate, latestCarryDate() || latestOrderDate()));
+    function renderTodayDateSelector() {
+      return renderTodayDateSelectors().carryDate;
     }
-    function renderReviewDateSelector() {
-      const fallback = defaultReviewDate();
-      const fallbackKey = formatDate(fallback);
-      const keys = [...new Set([...periodDateKeys(), fallbackKey].filter(Boolean))].sort();
-      if (!state.selectedReviewDate || (keys.length && !keys.includes(state.selectedReviewDate))) {
-        state.selectedReviewDate = keys.includes(fallbackKey) ? fallbackKey : (keys[keys.length - 1] || fallbackKey);
+    function renderReviewDateSelectors() {
+      const carryFallback = reviewCarryFallbackDate();
+      const carryKeys = carryDateKeys();
+      const carryFallbackKey = formatDate(carryFallback);
+      if (!state.selectedReviewCarryDate || (carryKeys.length && !carryKeys.includes(state.selectedReviewCarryDate))) {
+        state.selectedReviewCarryDate = carryKeys.includes(carryFallbackKey) ? carryFallbackKey : (carryKeys[carryKeys.length - 1] || carryFallbackKey);
       }
-      setDateSelector(document.getElementById("review-date-selector"), keys, state.selectedReviewDate, "暂无复盘日期", value => {
-        state.selectedReviewDate = value;
+      const conversionFallback = reviewConversionFallbackDate();
+      const conversionKeys = allDateKeys();
+      const conversionFallbackKey = formatDate(conversionFallback);
+      if (!state.selectedReviewConversionDate || (conversionKeys.length && !conversionKeys.includes(state.selectedReviewConversionDate))) {
+        state.selectedReviewConversionDate = conversionKeys.includes(conversionFallbackKey) ? conversionFallbackKey : (conversionKeys[conversionKeys.length - 1] || conversionFallbackKey);
+      }
+      setDateSelector(document.getElementById("review-date-selector"), carryKeys, state.selectedReviewCarryDate, "暂无承接日期", value => {
+        state.selectedReviewCarryDate = value;
         renderReview();
         resizeCharts();
       });
-      return dateFromKey(state.selectedReviewDate, fallback);
+      setDateSelector(document.getElementById("review-conversion-date-selector"), conversionKeys, state.selectedReviewConversionDate, "暂无转化日期", value => {
+        state.selectedReviewConversionDate = value;
+        renderReview();
+        resizeCharts();
+      });
+      return {
+        carryDate: dateFromKey(state.selectedReviewCarryDate, carryFallback),
+        conversionDate: dateFromKey(state.selectedReviewConversionDate, conversionFallback)
+      };
+    }
+    function renderReviewDateSelector() {
+      return renderReviewDateSelectors().carryDate;
     }
     function monthForDate(targetDate) {
       const key = monthKey(targetDate);
@@ -2908,38 +2997,82 @@
         .filter(row => row.carry > 0)
         .sort((a, b) => b.carry - a.carry);
     }
-    function forecastForDate(targetDate) {
-      const target = dateOnly(targetDate) || latestCarryDate() || latestOrderDate();
-      const month = monthForDate(target);
-      const actualCarry = actualCarryDay(target);
-      const detailPrediction = predictTodayFromDetail(target);
-      const fallbackPrediction = predictDay(target);
-      const prediction = predictionWithActualCarry(target, actualCarry, detailPrediction, fallbackPrediction);
-      const model = historicalPredictionModel(target);
-      const channelRows = splitChannelForecastRows([...(prediction.channels?.values?.() || [])], model)
-        .filter(row => (row.carry > 0 || row.gmv > 0) && isPredictableChannel(row.name))
+    function forecastRateTotals(actualCarry) {
+      const carry = number(actualCarry.carry);
+      const overall = dayRateForOverall();
+      const currentExpected = carry * number(overall.day1);
+      const pastBase = carry + PAST_AVERAGE_ORDER_COUNT;
+      const pastExpected = pastBase * (number(overall.day2) + number(overall.day3));
+      const currentOrders = Math.max(0, Math.round(currentExpected));
+      const pastOrders = Math.max(0, Math.round(pastExpected));
+      const totalOrders = currentOrders + pastOrders;
+      const currentGmv = currentOrders * ORDER_UNIT_PRICE;
+      const pastGmv = pastOrders * ORDER_UNIT_PRICE;
+      const totalGmv = currentGmv + pastGmv;
+      return {
+        currentExpected,
+        pastExpected,
+        currentOrders,
+        pastOrders,
+        totalOrders,
+        currentGmv,
+        pastGmv,
+        totalGmv,
+        overall
+      };
+    }
+    function forecastCurrentChannelRows(actualCarry) {
+      const rows = [...(actualCarry.channels?.values?.() || [])]
+        .map(compactMetric)
+        .filter(row => row.carry > 0);
+      return rows
+        .map(row => {
+          const rates = dayRateForChannel(row.name);
+          if (!rates) return null;
+          const expectedOrders = row.carry * number(rates.day1);
+          const orders = Math.max(0, Math.round(expectedOrders));
+          const gmv = orders * ORDER_UNIT_PRICE;
+          return {
+            ...row,
+            expectedOrders,
+            appointments: isInquiryChannel(row.name) ? 0 : Math.min(row.carry, Math.max(0, Math.round(row.carry * 0.5))),
+            attendance: isInquiryChannel(row.name) ? 0 : Math.min(row.carry, Math.max(0, Math.round(row.carry * 0.25))),
+            orders,
+            gmv,
+            up: row.carry ? gmv / row.carry : 0,
+            live: gmv,
+            chase: 0,
+            liveOrders: orders,
+            chaseOrders: 0
+          };
+        })
+        .filter(Boolean)
         .sort((a, b) => b.carry - a.carry);
-      const predictedChaseOrders = channelRows.reduce((sum, row) => sum + row.chaseOrders, 0);
-      const predictedLiveOrders = channelRows.reduce((sum, row) => sum + row.liveOrders, 0);
-      const predictedChaseGmv = predictedChaseOrders * ORDER_UNIT_PRICE;
-      const predictedLiveGmv = predictedLiveOrders * ORDER_UNIT_PRICE;
-      const predictedTotalGmv = predictedChaseGmv + predictedLiveGmv;
+    }
+    function forecastForDate(carryDate, conversionDate = carryDate) {
+      const target = dateOnly(carryDate) || latestCarryDate() || latestOrderDate();
+      const conversionTarget = dateOnly(conversionDate) || target;
+      const month = monthForDate(conversionTarget);
+      const actualCarry = reviewCurrentCarry(target);
+      const totals = forecastRateTotals(actualCarry);
+      const currentRows = forecastCurrentChannelRows(actualCarry);
+      const currentOwnerRows = ownerForecastRowsByRate(actualCarry);
       return {
         target,
+        conversionDate: conversionTarget,
         month,
         actualCarry,
-        detailPrediction,
-        fallbackPrediction,
-        prediction,
-        model,
-        channelRows,
-        actualChannelRows: actualChannelRows(actualCarry),
-        predictedChaseOrders,
-        predictedLiveOrders,
-        predictedChaseGmv,
-        predictedLiveGmv,
-        predictedTotalGmv,
-        predictedUp: actualCarry.carry ? predictedTotalGmv / actualCarry.carry : prediction.up
+        currentRows,
+        currentOwnerRows,
+        currentOrders: totals.currentOrders,
+        currentGmv: totals.currentGmv,
+        pastOrders: totals.pastOrders,
+        pastGmv: totals.pastGmv,
+        totalOrders: totals.totalOrders,
+        totalGmv: totals.totalGmv,
+        predictedUp: actualCarry.carry ? totals.totalGmv / actualCarry.carry : 0,
+        rateModel: totals.overall,
+        actualChannelRows: actualChannelRows(actualCarry)
       };
     }
     function forecastFlowValues(row, mode = "total") {
@@ -2957,7 +3090,7 @@
       const orders = isInquiryChannel(row.name) ? predictedOrders : Math.min(attendance || predictedOrders, predictedOrders);
       return { carry, appointment, attendance, orders, gmv: orders * ORDER_UNIT_PRICE };
     }
-    function renderLiveChaseSummary(totalPredicted, targets) {
+    function renderCurrentPastSummary(totalPredicted, targets) {
       const labels = ["一档", "二档", "三档"];
       const details = targets.map((target, index) => {
         if (!target) return `${labels[index]}已达成`;
@@ -2966,50 +3099,49 @@
           ? `${labels[index]}预计达成，超${currency(totalPredicted - target)}（${percent(gapPercent)}）`
           : `${labels[index]}预计未达成，差${currency(target - totalPredicted)}（${percent(gapPercent)}）`;
       });
-      document.getElementById("today-live-chase-summary").textContent = `今日直播+追单预计合计${currency(totalPredicted)}；${details.join("；")}。`;
+      document.getElementById("today-live-chase-summary").textContent = `当期+往期预测GMV合计${currency(totalPredicted)}；${details.join("；")}。`;
     }
 
     function renderToday() {
-      const target = renderTodayDateSelector();
+      const { carryDate, conversionDate } = renderTodayDateSelectors();
+      const window = businessDayWindow(conversionDate, 3);
+      const day1 = window.days[0] || conversionDate;
       const {
         month,
         actualCarry,
-        detailPrediction,
-        prediction,
-        model,
-        channelRows,
+        currentRows: channelRows,
         actualChannelRows: channelCompositionRows,
-        predictedChaseOrders,
-        predictedLiveOrders,
-        predictedChaseGmv,
-        predictedLiveGmv,
-        predictedTotalGmv,
-        predictedUp
-      } = forecastForDate(target);
+        currentOrders,
+        pastOrders,
+        currentGmv,
+        pastGmv,
+        totalGmv,
+        predictedUp,
+        rateModel
+      } = forecastForDate(carryDate, conversionDate);
+      const windowLabel = window.days.map((date, index) => `day${index + 1} ${formatDate(date)}`).join(" / ");
       document.getElementById("today-month-gmv").textContent = currency(month.gmv);
-      document.getElementById("today-forecast-date").textContent = `${formatDate(target)}预测`;
-      document.getElementById("today-source-date-note").textContent = `当前预测对象为 ${formatDate(target)}，可通过右上角日期筛选器切换。`;
-      document.getElementById("today-source-summary").textContent = `${formatDate(target)} 实际应销转 ${plainNumber(actualCarry.carry)} 人；模型综合承接规模、渠道结构、周几、近7/28日趋势和到课标签，历史基线 ${plainNumber(model.baselineDays)} 天。`;
-      document.getElementById("today-workday").textContent = workdayStatus(target);
+      document.getElementById("today-forecast-date").textContent = `承接 ${formatDate(carryDate)} / 转化 ${formatDate(day1)}`;
+      document.getElementById("today-source-date-note").textContent = `承接日期 ${formatDate(carryDate)}；转化日期 ${formatDate(conversionDate)} 起算，按工作日窗口：${windowLabel}。`;
+      document.getElementById("today-source-summary").textContent = `${formatDate(carryDate)} 应销转 ${plainNumber(actualCarry.carry)} 人；当期=应销转×整体day1 ${pct2(rateModel.day1 * 100)}，往期=(应销转+${PAST_AVERAGE_ORDER_COUNT})×整体day2/day3 ${pct2((rateModel.day2 + rateModel.day3) * 100)}。`;
+      document.getElementById("today-workday").textContent = workdayStatus(day1);
       document.getElementById("today-predicted-up").textContent = currency(predictedUp);
       document.getElementById("today-predicted-carry").textContent = plainNumber(actualCarry.carry);
       document.getElementById("today-donut-total").textContent = plainNumber(actualCarry.carry);
-      renderMonthlyTargets(month.gmv, target);
-      const workdayTargets = renderWorkdayTargets(target, month.gmv, predictedTotalGmv);
-      document.getElementById("today-chase-predicted-gmv").textContent = `${plainNumber(predictedChaseOrders)}单`;
-      document.getElementById("today-live-predicted-gmv").textContent = `${plainNumber(predictedLiveOrders)}单`;
-      document.getElementById("today-chase-predicted-text").textContent = `GMV ${exactCurrency(predictedChaseGmv)}`;
-      document.getElementById("today-live-predicted-text").textContent = `GMV ${exactCurrency(predictedLiveGmv)}`;
-      renderLiveChaseSummary(predictedLiveGmv + predictedChaseGmv, workdayTargets);
+      renderMonthlyTargets(month.gmv, day1);
+      const workdayTargets = renderWorkdayTargets(day1, month.gmv, totalGmv);
+      document.getElementById("today-chase-predicted-gmv").textContent = `${plainNumber(pastOrders)}单`;
+      document.getElementById("today-live-predicted-gmv").textContent = `${plainNumber(currentOrders)}单`;
+      document.getElementById("today-chase-predicted-text").textContent = `GMV ${exactCurrency(pastGmv)} · day2/day3`;
+      document.getElementById("today-live-predicted-text").textContent = `GMV ${exactCurrency(currentGmv)} · day1`;
+      renderCurrentPastSummary(totalGmv, workdayTargets);
       document.getElementById("today-channel-card-list").innerHTML = renderTodayChannelLegend(channelCompositionRows, actualCarry.carry);
-      document.getElementById("today-donut-note").textContent = `绝对数=应销转人数，百分比=占今日总应销转比例。当前总应销转 ${plainNumber(actualCarry.carry)}。`;
-      document.getElementById("today-channel-flow").innerHTML = channelRows.map(row => {
+      document.getElementById("today-donut-note").textContent = `绝对数=承接日期应销转人数，百分比=占该承接日期总应销转比例。当前总应销转 ${plainNumber(actualCarry.carry)}。`;
+      document.getElementById("today-channel-flow").innerHTML = channelRows.length ? channelRows.map(row => {
         const { carry, appointment, attendance, orders, gmv } = forecastFlowValues(row, "total");
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
-      }).join("");
-      document.getElementById("today-forecast-note").textContent = detailPrediction
-        ? `今日预测对象为${formatDate(target)}；应销转和渠道构成取承接表最新一日实际数据；已覆盖渠道先按固定转化率预测订单数，未覆盖渠道使用历史转化率兜底，再按订单表真实商品名称拆出的历史直播/追单订单占比拆分，最终直播${plainNumber(predictedLiveOrders)}单+追单${plainNumber(predictedChaseOrders)}单=渠道预测${plainNumber(predictedLiveOrders + predictedChaseOrders)}单；按2980元/单折算GMV。`
-        : "明细表无可用日粒度数据，已回退到订单/承接表历史基线预测。";
+      }).join("") : `<div class="sub">暂无可预测渠道；缺失、冲突、待补录及未配置rate的渠道不参与预测。</div>`;
+      document.getElementById("today-forecast-note").textContent = `预测逻辑：当期预测=${plainNumber(actualCarry.carry)}×整体day1 ${pct2(rateModel.day1 * 100)}=${plainNumber(currentOrders)}单；往期预测=(${plainNumber(actualCarry.carry)}+${PAST_AVERAGE_ORDER_COUNT})×整体(day2+day3) ${pct2((rateModel.day2 + rateModel.day3) * 100)}=${plainNumber(pastOrders)}单。渠道行按各渠道承接人数×各渠道day1 rate独立四舍五入预测；按${ORDER_UNIT_PRICE}元/单折算GMV。`;
     }
 
     function reviewSceneMetric(metric, scene, side, channelName) {
@@ -3075,8 +3207,13 @@
       if (day === 0) return addDays(target, -2);
       return target;
     }
+    function nextBusinessDayOnOrAfter(targetDate) {
+      let cursor = dateOnly(targetDate);
+      while (cursor && !isBusinessDay(cursor)) cursor = addDays(cursor, 1);
+      return cursor;
+    }
     function businessDayWindow(targetDate, count = 3) {
-      const start = reviewAnchorDate(targetDate);
+      const start = nextBusinessDayOnOrAfter(targetDate);
       if (!start) return { start: null, end: null, days: [] };
       const days = [];
       let cursor = start;
@@ -3142,11 +3279,11 @@
         if (order.orderNo) metric.chaseOrderNos.push(order.orderNo);
       }
     }
-    function reviewWindowActuals(targetDate) {
-      const anchor = reviewAnchorDate(targetDate);
-      const window = businessDayWindow(anchor, 3);
-      const currentUsers = cohortCarryUsers(anchor, "current");
-      const pastUsers = cohortCarryUsers(anchor, "past");
+    function reviewWindowActuals(carryDate, conversionDate = carryDate) {
+      const anchor = reviewAnchorDate(carryDate);
+      const window = businessDayWindow(conversionDate, 3);
+      const currentUsers = cohortCarryUsers(carryDate, "current");
+      const pastUsers = cohortCarryUsers(carryDate, "past");
       const currentIds = new Set(currentUsers.map(user => user.unionid));
       const pastIds = new Set(pastUsers.map(user => user.unionid).filter(id => !currentIds.has(id)));
       const currentMeta = new Map(currentUsers.map(user => [user.unionid, user]));
@@ -3170,45 +3307,38 @@
         addOrderToMetric(ensureMetric(target.channels, meta.channel), order);
         addOrderToMetric(ensureMetric(target.owners, meta.owner), order);
       });
-      return { anchor, window, current, past };
+      const total = { total: emptyReviewMetric("合计"), channels: new Map(), owners: new Map() };
+      total.total.carry = current.total.carry;
+      total.total.orders = current.total.orders + past.total.orders;
+      total.total.gmv = current.total.gmv + past.total.gmv;
+      total.total.live = current.total.live + past.total.live;
+      total.total.chase = current.total.chase + past.total.chase;
+      total.total.liveOrders = current.total.liveOrders + past.total.liveOrders;
+      total.total.chaseOrders = current.total.chaseOrders + past.total.chaseOrders;
+      total.total.attendance = current.total.attendance + past.total.attendance;
+      total.total.appointments = current.total.appointments + past.total.appointments;
+      total.total.conversion = current.total.conversion + past.total.conversion;
+      return { anchor, window, current, past, total };
     }
-    function distributePredictionToOwners(channelRows, actualCarry, model) {
-      const ownerRows = [...(actualCarry.owners?.values?.() || [])].map(compactMetric).filter(row => row.carry > 0);
-      const totalOrders = channelRows.reduce((sum, row) => sum + row.orders, 0);
-      const allocations = allocateInteger(totalOrders, ownerRows, row => row.carry);
-      const predictionOwners = ownerRows.map((row, index) => ({ ...row, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, appointments: 0 }));
-      predictionOwners.forEach((row, index) => {
-        const allocation = allocations[index] || 0;
-        predictionOwners[index].orders = allocation;
-      });
-      const splitRows = splitForecastRows(predictionOwners, model, "owners");
-      return new Map(splitRows.map(row => [row.name, row]));
-    }
-    function reviewCurrentPrediction(targetDate, forecast, actualCarry) {
-      const anchor = reviewAnchorDate(targetDate);
-      const anchorForecast = sameDate(anchor, forecast.target) ? forecast : forecastForDate(anchor);
-      const model = anchorForecast.model || historicalPredictionModel(anchor);
-      const prediction = predictionWithActualCarry(anchor, actualCarry, null, anchorForecast);
-      const channelRows = splitChannelForecastRows([...(prediction.channels?.values?.() || [])], model)
-        .filter(row => (row.carry > 0 || row.gmv > 0) && isPredictableChannel(row.name))
-        .sort((a, b) => b.carry - a.carry);
-      const owners = distributePredictionToOwners(channelRows, actualCarry, model);
+    function reviewCurrentPrediction(carryDate, conversionDate, forecast, actualCarry) {
+      const currentRows = forecast?.currentRows || [];
+      const owners = forecast?.currentOwnerRows || ownerForecastRowsByRate(actualCarry);
       return {
         total: compactMetric({
           name: "当期预测",
           carry: actualCarry.carry,
-          orders: channelRows.reduce((sum, row) => sum + row.orders, 0),
-          gmv: channelRows.reduce((sum, row) => sum + row.gmv, 0),
-          live: channelRows.reduce((sum, row) => sum + row.live, 0),
-          chase: channelRows.reduce((sum, row) => sum + row.chase, 0),
-          liveOrders: channelRows.reduce((sum, row) => sum + row.liveOrders, 0),
-          chaseOrders: channelRows.reduce((sum, row) => sum + row.chaseOrders, 0),
+          orders: forecast?.currentOrders || currentRows.reduce((sum, row) => sum + row.orders, 0),
+          gmv: forecast?.currentGmv || currentRows.reduce((sum, row) => sum + row.gmv, 0),
+          live: forecast?.currentGmv || currentRows.reduce((sum, row) => sum + row.gmv, 0),
+          chase: 0,
+          liveOrders: forecast?.currentOrders || currentRows.reduce((sum, row) => sum + row.orders, 0),
+          chaseOrders: 0,
           attendance: actualCarry.attendance,
           appointments: 0,
-          conversion: channelRows.reduce((sum, row) => sum + row.orders, 0)
+          conversion: forecast?.currentOrders || currentRows.reduce((sum, row) => sum + row.orders, 0)
         }),
-        channels: new Map(channelRows.map(row => [row.name, row])),
-        owners
+        channels: new Map(currentRows.map(row => [row.name, row])),
+        owners: new Map(owners.map(row => [row.name, row]))
       };
     }
     function completeReviewRows(map, names) {
@@ -3226,7 +3356,7 @@
         const rowClass = options.showOrders ? "compare-line is-clickable" : "compare-line";
         const rowAttrs = options.showOrders ? ` data-review-order-row="1" role="button" tabindex="0" aria-expanded="false"` : "";
         const flow = { carry: row.carry, appointments: row.appointments || 0, attendance: row.attendance || 0, orders: row.orders };
-        return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track segmented-report-track">${segmentedLiveChaseBar(row, max)}</div>${reviewFlowNote(flow, "live")}${orderDetail}</div>`;
+        return `<div class="${rowClass}"${rowAttrs}><div class="compare-head"><strong>${label(row.name)}</strong><span>GMV ${exactCurrency(row.gmv)} · 订单数 ${plainNumber(row.orders)}${options.showOrders ? " · 点击查看订单号" : ""}</span></div><div class="track"><div class="fill s${(index % 4) + 1}" style="width:${share(row.gmv, max)}%"></div></div>${reviewFlowNote(flow, "live")}${orderDetail}</div>`;
       }).join("");
     }
     function renderReviewFunnel(metric) {
@@ -3270,7 +3400,7 @@
       const actualCarry = actualCarryDay(targetDate);
       const forecast = forecastForDate(targetDate);
       const channelPrediction = {
-        channels: new Map(forecast.channelRows.map(row => [row.name, row])),
+        channels: new Map((forecast.currentRows || []).map(row => [row.name, row])),
         owners: ownerPredictionFromCarry(actualCarry)
       };
       const ownerRows = completeDimensionRows(day, channelPrediction, "owners", [...CORE_OWNERS, "激活组"])
@@ -3309,56 +3439,46 @@
     }
 
     function renderReview() {
-      const target = renderReviewDateSelector();
-      const day = actualDay(target);
-      const actualCarry = actualCarryDay(target);
-      const forecast = forecastForDate(target);
-      const predictedOwnerRows = ownerForecastRowsByRate(actualCarry);
-      const windowActuals = reviewWindowActuals(target);
-      const reviewCarry = reviewCurrentCarry(target);
-      const currentPrediction = reviewCurrentPrediction(target, forecast, reviewCarry);
+      const { carryDate, conversionDate } = renderReviewDateSelectors();
+      const forecast = forecastForDate(carryDate, conversionDate);
+      const windowActuals = reviewWindowActuals(carryDate, conversionDate);
+      const reviewCarry = forecast.actualCarry;
+      const currentPrediction = reviewCurrentPrediction(carryDate, conversionDate, forecast, reviewCarry);
       const currentActual = windowActuals.current;
-      const pastPrediction = { total: compactMetric({ name: "往期预测", orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, conversion: 0 }) };
+      const pastPrediction = { total: compactMetric({ name: "往期预测", carry: reviewCarry.carry, orders: forecast.pastOrders, gmv: forecast.pastGmv, live: 0, chase: forecast.pastGmv, liveOrders: 0, chaseOrders: forecast.pastOrders, conversion: forecast.pastOrders }) };
       const pastActual = windowActuals.past;
-      const predictedGmv = forecast.predictedTotalGmv;
-      const predictedLive = forecast.predictedLiveGmv;
-      const predictedChase = forecast.predictedChaseGmv;
-      const predictedOrders = forecast.predictedLiveOrders + forecast.predictedChaseOrders;
+      const actualTotal = compactMetric(windowActuals.total.total);
       const prediction = {
-        key: formatDate(target),
-        label: formatDate(target),
-        date: target,
-        carry: actualCarry.carry,
-        orders: predictedOrders,
-        gmv: predictedGmv,
-        live: predictedLive,
-        chase: predictedChase,
-        conversion: predictedOrders,
-        up: actualCarry.carry ? predictedGmv / actualCarry.carry : forecast.model.up,
-        channels: new Map(forecast.channelRows.map(row => [row.name, row])),
-        owners: new Map(predictedOwnerRows.map(row => [row.name, row])),
-        baselineDays: forecast.model.baselineDays
+        key: `${formatDate(carryDate)}:${formatDate(conversionDate)}`,
+        label: `${formatDate(carryDate)} / ${formatDate(conversionDate)}`,
+        date: conversionDate,
+        carry: reviewCarry.carry,
+        orders: forecast.totalOrders,
+        gmv: forecast.totalGmv,
+        conversion: forecast.totalOrders,
+        up: forecast.predictedUp,
+        channels: currentPrediction.channels,
+        owners: currentPrediction.owners
       };
-      document.getElementById("review-date").textContent = `${formatDate(target)}复盘`;
+      const day1 = windowActuals.window.days[0] || conversionDate;
+      const windowDays = windowActuals.window.days.map((date, index) => `day${index + 1} ${formatDate(date)}`).join("、");
+      document.getElementById("review-date").textContent = `承接 ${formatDate(carryDate)} / 转化 ${formatDate(day1)}`;
       document.getElementById("review-predicted-gmv").textContent = exactCurrency(prediction.gmv);
       document.getElementById("review-predicted-up").textContent = currency(prediction.up);
       document.getElementById("review-predicted-carry").textContent = plainNumber(prediction.carry);
       document.getElementById("review-predicted-conversion").textContent = plainNumber(prediction.conversion);
-      document.getElementById("review-predicted-chase").textContent = `${plainNumber(forecast.predictedChaseOrders)}单`;
-      document.getElementById("review-predicted-live").textContent = `${plainNumber(forecast.predictedLiveOrders)}单`;
       document.getElementById("review-current-predicted").textContent = `${plainNumber(currentPrediction.total.orders)}单`;
       document.getElementById("review-past-predicted").textContent = `${plainNumber(pastPrediction.total.orders)}单`;
-      document.getElementById("review-gmv").textContent = exactCurrency(day.gmv);
-      document.getElementById("review-up").textContent = currency(day.up);
-      document.getElementById("review-carry").textContent = plainNumber(day.carry);
-      document.getElementById("review-conv").textContent = plainNumber(day.conversion);
-      document.getElementById("review-actual-chase").textContent = `${plainNumber(day.chaseOrders)}单`;
-      document.getElementById("review-actual-live").textContent = `${plainNumber(day.liveOrders)}单`;
+      document.getElementById("review-gmv").textContent = exactCurrency(actualTotal.gmv);
+      document.getElementById("review-up").textContent = currency(reviewCarry.carry ? actualTotal.gmv / reviewCarry.carry : 0);
+      document.getElementById("review-carry").textContent = plainNumber(reviewCarry.carry);
+      document.getElementById("review-conv").textContent = plainNumber(actualTotal.orders);
       document.getElementById("review-current-actual").textContent = `${plainNumber(currentActual.total.orders)}单`;
       document.getElementById("review-past-actual").textContent = `${plainNumber(pastActual.total.orders)}单`;
-      const predictedChannels = completeReviewRows(currentPrediction.channels, CHANNELS).filter(row => !isTailChannel(row.name));
+      const channelNames = orderedReviewChannelNames([...CHANNELS, ...(currentPrediction.channels.keys?.() || []), ...(currentActual.channels.keys?.() || [])]);
+      const predictedChannels = completeReviewRows(currentPrediction.channels, channelNames).filter(row => !isTailChannel(row.name));
       const predictedOwners = completeReviewRows(currentPrediction.owners, OWNERS).filter(row => row.name !== "待补录");
-      const actualChannels = completeReviewRows(currentActual.channels, tailDimensionNames([...CHANNELS, ...(currentActual.channels.keys?.() || [])]));
+      const actualChannels = completeReviewRows(currentActual.channels, channelNames).filter(row => !isTailChannel(row.name) || hasAnyMetric(row));
       const actualOwners = completeReviewRows(currentActual.owners, OWNERS).filter(row => row.name !== "待补录");
       document.getElementById("review-current-predict-channel").innerHTML = renderReviewCurrentLines(predictedChannels, currentPrediction.total, { short: true });
       document.getElementById("review-current-predict-owner").innerHTML = renderReviewCurrentLines(predictedOwners, currentPrediction.total);
@@ -3366,12 +3486,11 @@
       document.getElementById("review-current-actual-owner").innerHTML = renderReviewCurrentLines(actualOwners, currentActual.total, { showOrders: true });
       document.getElementById("review-predict-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastPrediction.total.orders });
       document.getElementById("review-actual-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastActual.total.orders });
-      const gap = day.gmv - prediction.gmv;
-      const completion = prediction.gmv ? day.gmv / prediction.gmv * 100 : 0;
+      const gap = actualTotal.gmv - prediction.gmv;
+      const completion = prediction.gmv ? actualTotal.gmv / prediction.gmv * 100 : 0;
       const carryEnd = reviewWeekendCarryEnd(windowActuals.anchor);
-      const windowDays = windowActuals.window.days.map(formatDate).join("、");
-      const anchorNote = sameDate(target, windowActuals.anchor) ? formatDate(windowActuals.anchor) : `${formatDate(target)}归并至${formatDate(windowActuals.anchor)}`;
-      document.getElementById("review-conclusion").textContent = `${formatDate(target)}实际GMV ${exactCurrency(day.gmv)}，预测GMV ${exactCurrency(prediction.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。顶部总卡保留单日口径；当期/往期模块按归属日 ${anchorNote} 统计，当期承接池为 ${formatDate(windowActuals.anchor)} ~ ${formatDate(carryEnd)}，订单窗口为3个工作日：${windowDays}。`;
+      const anchorNote = sameDate(carryDate, windowActuals.anchor) ? formatDate(windowActuals.anchor) : `${formatDate(carryDate)}归并至${formatDate(windowActuals.anchor)}`;
+      document.getElementById("review-conclusion").textContent = `承接日期${formatDate(carryDate)}，转化窗口${windowDays}；预测GMV ${exactCurrency(prediction.gmv)}，实际GMV ${exactCurrency(actualTotal.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。当期承接池按 ${anchorNote} 统计，若归属日为周五则包含 ${formatDate(windowActuals.anchor)} ~ ${formatDate(carryEnd)} 的周末承接。`;
     }
 
     function coreOwnerWeeklyGmv(current) {

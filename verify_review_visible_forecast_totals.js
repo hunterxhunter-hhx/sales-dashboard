@@ -11,6 +11,7 @@ function nodeFor(id = "") {
   if (!nodes.has(id)) {
     nodes.set(id, {
       id,
+      value: "",
       textContent: "",
       innerHTML: "",
       style: {},
@@ -40,31 +41,51 @@ const code = `
 normalizePayload(payload);
 normalizeForecastDetails(forecastDetails);
 renderReview();
-const target = previousOrderDate(latestCarryDate() || latestOrderDate());
-const actualCarry = actualCarryDay(target);
-const model = historicalPredictionModel(target);
-const predictedChannelRows = channelPredictionRows(actualCarry, model);
-const visibleRows = predictedChannelRows.filter(row => !isTailChannel(row.name));
-const visibleOrders = visibleRows.reduce((sum, row) => sum + row.orders, 0);
-const visibleGmv = visibleRows.reduce((sum, row) => sum + row.gmv, 0);
-const displayedOrders = Number(String(document.getElementById("review-predicted-conversion").textContent || "").replace(/[^0-9.-]/g, "")) || 0;
-const displayedGmv = Number(String(document.getElementById("review-predicted-gmv").textContent || "").replace(/[^0-9.-]/g, "")) || 0;
-const predictedHtml = document.getElementById("review-predict-lines").innerHTML;
-if (displayedOrders !== visibleOrders) {
-  throw new Error(\`Review predicted conversion mismatch: displayed=\${displayedOrders}, visible channel orders=\${visibleOrders}\`);
+
+const carryDate = dateFromKey(state.selectedReviewCarryDate, reviewCarryFallbackDate());
+const conversionDate = dateFromKey(state.selectedReviewConversionDate, reviewConversionFallbackDate());
+const forecast = forecastForDate(carryDate, conversionDate);
+const actuals = reviewWindowActuals(carryDate, conversionDate);
+const parseOrders = id => Number(String(document.getElementById(id).textContent || "").match(/\\d+/)?.[0] || 0);
+
+const displayedTotal = parseOrders("review-predicted-conversion");
+const displayedCurrent = parseOrders("review-current-predicted");
+const displayedPast = parseOrders("review-past-predicted");
+const actualCurrent = parseOrders("review-current-actual");
+const actualPast = parseOrders("review-past-actual");
+const actualTotal = parseOrders("review-conv");
+
+if (displayedTotal !== forecast.totalOrders) {
+  throw new Error(\`Review predicted conversion mismatch: displayed=\${displayedTotal}, model=\${forecast.totalOrders}\`);
 }
-if (displayedGmv !== visibleGmv) {
-  throw new Error(\`Review predicted GMV mismatch: displayed=\${displayedGmv}, visible channel GMV=\${visibleGmv}\`);
+if (displayedCurrent !== forecast.currentOrders) {
+  throw new Error(\`Review current prediction mismatch: displayed=\${displayedCurrent}, model=\${forecast.currentOrders}\`);
 }
-if (/缺失渠道|冲突渠道|待补录|待归因/.test(predictedHtml)) {
-  throw new Error("Review predicted lines should hide tail channels");
+if (displayedPast !== forecast.pastOrders) {
+  throw new Error(\`Review past prediction mismatch: displayed=\${displayedPast}, model=\${forecast.pastOrders}\`);
 }
+if (actualCurrent !== actuals.current.total.orders) {
+  throw new Error(\`Review current actual mismatch: displayed=\${actualCurrent}, model=\${actuals.current.total.orders}\`);
+}
+if (actualPast !== actuals.past.total.orders) {
+  throw new Error(\`Review past actual mismatch: displayed=\${actualPast}, model=\${actuals.past.total.orders}\`);
+}
+if (actualTotal !== actuals.total.total.orders) {
+  throw new Error(\`Review total actual mismatch: displayed=\${actualTotal}, model=\${actuals.total.total.orders}\`);
+}
+
+const windowLabels = actuals.window.days.map(formatDate).join(",");
+if (!windowLabels) throw new Error("Review conversion workday window is empty");
+if (document.getElementById("review-current-actual-channel").innerHTML.includes("订单号") && !document.getElementById("review-current-actual-channel").innerHTML.includes("点击查看订单号")) {
+  throw new Error("Review actual channel order drilldown copy is inconsistent");
+}
+
 console.log(JSON.stringify({
-  target: formatDate(target),
-  displayedOrders,
-  visibleOrders,
-  displayedGmv,
-  visibleGmv
+  carryDate: formatDate(carryDate),
+  conversionDate: formatDate(conversionDate),
+  window: windowLabels,
+  displayedTotal,
+  actualTotal
 }, null, 2));
 `;
 
