@@ -42,10 +42,10 @@ normalizePayload(payload);
 normalizeForecastDetails(forecastDetails);
 renderReview();
 
-const carryDate = dateFromKey(state.selectedReviewCarryDate, reviewCarryFallbackDate());
+const carryDates = datesFromKeys(state.selectedReviewCarryDates, reviewCarryFallbackDate());
 const conversionDate = dateFromKey(state.selectedReviewConversionDate, reviewConversionFallbackDate());
-const forecast = forecastForDate(carryDate, conversionDate);
-const actuals = reviewWindowActuals(carryDate, conversionDate);
+const forecast = forecastForDate(carryDates, conversionDate);
+const actuals = reviewWindowActuals(carryDates, conversionDate);
 const parseOrders = id => Number(String(document.getElementById(id).textContent || "").match(/\\d+/)?.[0] || 0);
 
 const displayedTotal = parseOrders("review-predicted-conversion");
@@ -60,6 +60,10 @@ if (displayedTotal !== forecast.totalOrders) {
 }
 if (displayedCurrent !== forecast.currentOrders) {
   throw new Error(\`Review current prediction mismatch: displayed=\${displayedCurrent}, model=\${forecast.currentOrders}\`);
+}
+const predictedChannelOrders = (forecast.currentRows || []).reduce((sum, row) => sum + row.orders, 0);
+if (displayedCurrent !== predictedChannelOrders) {
+  throw new Error("Review current prediction must equal channel order sum: displayed=" + displayedCurrent + ", channelSum=" + predictedChannelOrders);
 }
 if (displayedPast !== forecast.pastOrders) {
   throw new Error(\`Review past prediction mismatch: displayed=\${displayedPast}, model=\${forecast.pastOrders}\`);
@@ -81,7 +85,7 @@ if (document.getElementById("review-current-actual-channel").innerHTML.includes(
 }
 
 console.log(JSON.stringify({
-  carryDate: formatDate(carryDate),
+  carryDate: carryDateLabel(carryDates),
   conversionDate: formatDate(conversionDate),
   window: windowLabels,
   displayedTotal,

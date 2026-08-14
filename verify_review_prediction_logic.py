@@ -50,9 +50,9 @@ assert not missing, "review prediction DOM missing: " + ", ".join(missing)
 
 for token in [
     "renderReviewDateSelectors()",
-    "forecastForDate(carryDate, conversionDate)",
-    "reviewWindowActuals(carryDate, conversionDate)",
-    "reviewCurrentPrediction(carryDate, conversionDate, forecast, reviewCarry)",
+    "forecastForDate(carryDates, conversionDate)",
+    "reviewWindowActuals(carryDates, conversionDate)",
+    "reviewCurrentPrediction(carryDates, conversionDate, forecast, reviewCarry)",
     "renderReviewCurrentLines(",
     "renderReviewFunnel(",
     "orderedReviewChannelNames(",
@@ -61,8 +61,8 @@ for token in [
     assert token in render_review, f"renderReview missing {token}"
 
 assert "businessDayWindow(conversionDate, 3)" in review_actuals
-assert "cohortCarryUsers(carryDate, \"current\")" in review_actuals
-assert "cohortCarryUsers(carryDate, \"past\")" in review_actuals
+assert "cohortCarryUsersForDates(carryDates, \"current\")" in review_actuals
+assert "cohortCarryUsersForDates(carryDates, \"past\")" in review_actuals
 assert "currentRows = forecast?.currentRows" in review_prediction
 assert "forecast?.currentOrders" in review_prediction
 

@@ -34,9 +34,9 @@ assert "DAY_RATE_TABLE" in html
 assert "PAST_AVERAGE_ORDER_COUNT = 1" in html
 
 assert "businessDayWindow(conversionDate, 3)" in render_today
-assert "forecastForDate(carryDate, conversionDate)" in render_today
+assert "forecastForDate(carryDates, conversionDate)" in render_today
 assert "businessDayWindow(conversionDate, 3)" in review_actuals
-assert "forecastForDate(carryDate, conversionDate)" in render_review
+assert "forecastForDate(carryDates, conversionDate)" in render_review
 assert "nextBusinessDayOnOrAfter(targetDate)" in window
 assert "isBusinessDay(cursor)" in window
 

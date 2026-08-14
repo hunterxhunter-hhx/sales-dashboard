@@ -1003,6 +1003,12 @@
       color: var(--foreground);
       font-weight: 600;
     }
+    select[multiple] {
+      border-radius: 14px;
+      min-width: 150px;
+      max-height: 118px;
+      padding: 8px 10px;
+    }
     @media (max-width: 1100px) {
       .viz-grid, .two, .wide-side, .compare-shell, .channel-flow, .week-channel-trends { grid-template-columns: 1fr; }
       .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1054,7 +1060,7 @@
             <div class="sub" id="today-source-summary">等待本地数据加载。</div>
           </div>
           <div class="viz-row">
-            <label class="date-filter"><span>承接日期</span><select id="today-date-selector" aria-label="选择承接日期"></select></label>
+            <label class="date-filter"><span>承接日期（可多选）</span><select id="today-date-selector" multiple size="4" aria-label="选择承接日期"></select></label>
             <label class="date-filter"><span>转化日期</span><select id="today-conversion-date-selector" aria-label="选择转化日期"></select></label>
             <span class="viz-badge" id="today-workday">第0 / 0个工作日</span>
           </div>
@@ -1114,7 +1120,7 @@
         <div class="section-head">
           <div><h2>昨日复盘：实际对预测</h2><div class="sub">预测来自今日预测同一day1/day2/day3模型，实际来自承接表和订单表</div></div>
           <div class="viz-row">
-            <label class="date-filter"><span>承接日期</span><select id="review-date-selector" aria-label="选择承接日期"></select></label>
+            <label class="date-filter"><span>承接日期（可多选）</span><select id="review-date-selector" multiple size="4" aria-label="选择承接日期"></select></label>
             <label class="date-filter"><span>转化日期</span><select id="review-conversion-date-selector" aria-label="选择转化日期"></select></label>
             <span class="viz-badge" id="review-date">最新完整日</span>
           </div>
@@ -1362,9 +1368,9 @@
       youzan: { available: false, cards: {}, charts: {} },
       periods: { week: [], month: [], day: [] },
       selectedChannel: "",
-      selectedTodayCarryDate: "",
+      selectedTodayCarryDates: [],
       selectedTodayConversionDate: "",
-      selectedReviewCarryDate: "",
+      selectedReviewCarryDates: [],
       selectedReviewConversionDate: "",
       selectedWeek: "",
       selectedMonth: "",
@@ -2010,6 +2016,58 @@
       }
       return selector.value;
     }
+    function normalizeSelectedDateKeys(selectedKeys, keys, fallbackKey) {
+      const selected = (Array.isArray(selectedKeys) ? selectedKeys : [selectedKeys]).filter(Boolean);
+      const valid = [...new Set(selected.filter(key => keys.includes(key)))].sort();
+      if (valid.length) return valid;
+      const fallback = keys.includes(fallbackKey) ? fallbackKey : (keys[keys.length - 1] || fallbackKey);
+      return fallback ? [fallback] : [];
+    }
+    function setMultiDateSelector(selector, keys, selectedKeys, emptyLabel, onChange) {
+      if (!selector) return [];
+      if (!keys.length) {
+        selector.innerHTML = `<option value="">${emptyLabel}</option>`;
+        selector.disabled = true;
+        return [];
+      }
+      selector.disabled = false;
+      const selected = normalizeSelectedDateKeys(selectedKeys, keys, keys[keys.length - 1]);
+      const options = keys.slice().reverse().map(key => `<option value="${key}">${key}</option>`).join("");
+      if (selector.innerHTML !== options) selector.innerHTML = options;
+      if (selector.options) {
+        Array.from(selector.options).forEach(option => {
+          option.selected = selected.includes(option.value);
+        });
+      } else {
+        selector.value = selected[0] || "";
+      }
+      if (selector.dataset.bound !== "1") {
+        selector.dataset.bound = "1";
+        selector.addEventListener("change", () => {
+          const values = selector.selectedOptions
+            ? Array.from(selector.selectedOptions).map(option => option.value).filter(Boolean)
+            : [selector.value].filter(Boolean);
+          onChange(values);
+        });
+      }
+      return selected;
+    }
+    function datesFromKeys(keys, fallback = null) {
+      const dates = (Array.isArray(keys) ? keys : [keys]).map(key => dateFromKey(key)).filter(Boolean);
+      if (dates.length) return dates.sort((a, b) => a - b);
+      const fallbackDate = dateOnly(fallback);
+      return fallbackDate ? [fallbackDate] : [];
+    }
+    function latestDateFromKeys(keys, fallback = null) {
+      const dates = datesFromKeys(keys, fallback);
+      return dates[dates.length - 1] || dateOnly(fallback);
+    }
+    function carryDateLabel(dates) {
+      const keys = datesFromKeys(dates).map(formatDate);
+      if (!keys.length) return "-";
+      if (keys.length <= 3) return keys.join("、");
+      return `${keys[0]} ~ ${keys[keys.length - 1]}（${keys.length}天）`;
+    }
     function allDateKeys() {
       return uniqueDateKeys([
         ...(state.carry || []).map(row => row.addTime),
@@ -2024,7 +2082,7 @@
       return todayCarryFallbackDate();
     }
     function reviewCarryFallbackDate() {
-      return previousOrderDate(dateFromKey(state.selectedTodayCarryDate, latestCarryDate() || latestOrderDate()));
+      return previousOrderDate(latestDateFromKeys(state.selectedTodayCarryDates, latestCarryDate() || latestOrderDate()));
     }
     function reviewConversionFallbackDate() {
       return reviewCarryFallbackDate();
@@ -2033,17 +2091,15 @@
       const carryFallback = todayCarryFallbackDate();
       const carryKeys = carryDateKeys();
       const carryFallbackKey = formatDate(carryFallback);
-      if (!state.selectedTodayCarryDate || (carryKeys.length && !carryKeys.includes(state.selectedTodayCarryDate))) {
-        state.selectedTodayCarryDate = carryKeys.includes(carryFallbackKey) ? carryFallbackKey : (carryKeys[carryKeys.length - 1] || carryFallbackKey);
-      }
+      state.selectedTodayCarryDates = normalizeSelectedDateKeys(state.selectedTodayCarryDates, carryKeys, carryFallbackKey);
       const conversionFallback = todayConversionFallbackDate();
       const conversionKeys = allDateKeys();
       const conversionFallbackKey = formatDate(conversionFallback);
       if (!state.selectedTodayConversionDate || (conversionKeys.length && !conversionKeys.includes(state.selectedTodayConversionDate))) {
         state.selectedTodayConversionDate = conversionKeys.includes(conversionFallbackKey) ? conversionFallbackKey : (conversionKeys[conversionKeys.length - 1] || conversionFallbackKey);
       }
-      setDateSelector(document.getElementById("today-date-selector"), carryKeys, state.selectedTodayCarryDate, "暂无承接日期", value => {
-        state.selectedTodayCarryDate = value;
+      setMultiDateSelector(document.getElementById("today-date-selector"), carryKeys, state.selectedTodayCarryDates, "暂无承接日期", values => {
+        state.selectedTodayCarryDates = values;
         renderToday();
         resizeCharts();
       });
@@ -2053,28 +2109,26 @@
         resizeCharts();
       });
       return {
-        carryDate: dateFromKey(state.selectedTodayCarryDate, carryFallback),
+        carryDates: datesFromKeys(state.selectedTodayCarryDates, carryFallback),
         conversionDate: dateFromKey(state.selectedTodayConversionDate, conversionFallback)
       };
     }
     function renderTodayDateSelector() {
-      return renderTodayDateSelectors().carryDate;
+      return latestDateFromKeys(state.selectedTodayCarryDates, todayCarryFallbackDate());
     }
     function renderReviewDateSelectors() {
       const carryFallback = reviewCarryFallbackDate();
       const carryKeys = carryDateKeys();
       const carryFallbackKey = formatDate(carryFallback);
-      if (!state.selectedReviewCarryDate || (carryKeys.length && !carryKeys.includes(state.selectedReviewCarryDate))) {
-        state.selectedReviewCarryDate = carryKeys.includes(carryFallbackKey) ? carryFallbackKey : (carryKeys[carryKeys.length - 1] || carryFallbackKey);
-      }
+      state.selectedReviewCarryDates = normalizeSelectedDateKeys(state.selectedReviewCarryDates, carryKeys, carryFallbackKey);
       const conversionFallback = reviewConversionFallbackDate();
       const conversionKeys = allDateKeys();
       const conversionFallbackKey = formatDate(conversionFallback);
       if (!state.selectedReviewConversionDate || (conversionKeys.length && !conversionKeys.includes(state.selectedReviewConversionDate))) {
         state.selectedReviewConversionDate = conversionKeys.includes(conversionFallbackKey) ? conversionFallbackKey : (conversionKeys[conversionKeys.length - 1] || conversionFallbackKey);
       }
-      setDateSelector(document.getElementById("review-date-selector"), carryKeys, state.selectedReviewCarryDate, "暂无承接日期", value => {
-        state.selectedReviewCarryDate = value;
+      setMultiDateSelector(document.getElementById("review-date-selector"), carryKeys, state.selectedReviewCarryDates, "暂无承接日期", values => {
+        state.selectedReviewCarryDates = values;
         renderReview();
         resizeCharts();
       });
@@ -2084,12 +2138,12 @@
         resizeCharts();
       });
       return {
-        carryDate: dateFromKey(state.selectedReviewCarryDate, carryFallback),
+        carryDates: datesFromKeys(state.selectedReviewCarryDates, carryFallback),
         conversionDate: dateFromKey(state.selectedReviewConversionDate, conversionFallback)
       };
     }
     function renderReviewDateSelector() {
-      return renderReviewDateSelectors().carryDate;
+      return latestDateFromKeys(state.selectedReviewCarryDates, reviewCarryFallbackDate());
     }
     function monthForDate(targetDate) {
       const key = monthKey(targetDate);
@@ -2997,12 +3051,12 @@
         .filter(row => row.carry > 0)
         .sort((a, b) => b.carry - a.carry);
     }
-    function forecastRateTotals(actualCarry) {
+    function forecastRateTotals(actualCarry, currentOrderOverride = null) {
       const carry = number(actualCarry.carry);
       const overall = dayRateForOverall();
       const currentExpected = carry * number(overall.day1);
       const pastExpected = carry * number(overall.day2) + carry * number(overall.day3) + PAST_AVERAGE_ORDER_COUNT;
-      const currentOrders = Math.max(0, Math.round(currentExpected));
+      const currentOrders = currentOrderOverride == null ? Math.max(0, Math.round(currentExpected)) : Math.max(0, Math.round(number(currentOrderOverride)));
       const pastOrders = Math.max(0, Math.round(pastExpected));
       const totalOrders = currentOrders + pastOrders;
       const currentGmv = currentOrders * ORDER_UNIT_PRICE;
@@ -3049,15 +3103,19 @@
         .sort((a, b) => b.carry - a.carry);
     }
     function forecastForDate(carryDate, conversionDate = carryDate) {
-      const target = dateOnly(carryDate) || latestCarryDate() || latestOrderDate();
-      const conversionTarget = dateOnly(conversionDate) || target;
+      const targetDates = carryDatesArray(carryDate).length ? carryDatesArray(carryDate) : [latestCarryDate() || latestOrderDate()].filter(Boolean);
+      const target = targetDates[targetDates.length - 1] || latestCarryDate() || latestOrderDate();
+      const conversionTarget = dateOnly(Array.isArray(conversionDate) ? target : conversionDate) || target;
       const month = monthForDate(conversionTarget);
-      const actualCarry = reviewCurrentCarry(target);
-      const totals = forecastRateTotals(actualCarry);
+      const actualCarry = reviewCurrentCarry(targetDates);
       const currentRows = forecastCurrentChannelRows(actualCarry);
+      const currentOrderSum = currentRows.reduce((sum, row) => sum + row.orders, 0);
+      const totals = forecastRateTotals(actualCarry, currentOrderSum);
       const currentOwnerRows = ownerForecastRowsByRate(actualCarry);
       return {
         target,
+        targetDates,
+        carryLabel: carryDateLabel(targetDates),
         conversionDate: conversionTarget,
         month,
         actualCarry,
@@ -3102,11 +3160,12 @@
     }
 
     function renderToday() {
-      const { carryDate, conversionDate } = renderTodayDateSelectors();
+      const { carryDates, conversionDate } = renderTodayDateSelectors();
       const window = businessDayWindow(conversionDate, 3);
       const day1 = window.days[0] || conversionDate;
       const {
         month,
+        carryLabel,
         actualCarry,
         currentRows: channelRows,
         actualChannelRows: channelCompositionRows,
@@ -3117,12 +3176,12 @@
         totalGmv,
         predictedUp,
         rateModel
-      } = forecastForDate(carryDate, conversionDate);
+      } = forecastForDate(carryDates, conversionDate);
       const windowLabel = window.days.map((date, index) => `day${index + 1} ${formatDate(date)}`).join(" / ");
       document.getElementById("today-month-gmv").textContent = currency(month.gmv);
-      document.getElementById("today-forecast-date").textContent = `承接 ${formatDate(carryDate)} / 转化 ${formatDate(day1)}`;
-      document.getElementById("today-source-date-note").textContent = `承接日期 ${formatDate(carryDate)}；转化日期 ${formatDate(conversionDate)} 起算，按工作日窗口：${windowLabel}。`;
-      document.getElementById("today-source-summary").textContent = `${formatDate(carryDate)} 应销转 ${plainNumber(actualCarry.carry)} 人；当期=应销转×整体day1 ${pct2(rateModel.day1 * 100)}，往期=应销转×整体day2 ${pct2(rateModel.day2 * 100)} + 应销转×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}。`;
+      document.getElementById("today-forecast-date").textContent = `承接 ${carryLabel} / 转化 ${formatDate(day1)}`;
+      document.getElementById("today-source-date-note").textContent = `承接日期 ${carryLabel}；转化日期 ${formatDate(conversionDate)} 起算，按工作日窗口：${windowLabel}。`;
+      document.getElementById("today-source-summary").textContent = `${carryLabel} 应销转合计 ${plainNumber(actualCarry.carry)} 人；当期=按渠道day1预测订单数合计；往期=应销转×整体day2 ${pct2(rateModel.day2 * 100)} + 应销转×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}。`;
       document.getElementById("today-workday").textContent = workdayStatus(day1);
       document.getElementById("today-predicted-up").textContent = currency(predictedUp);
       document.getElementById("today-predicted-carry").textContent = plainNumber(actualCarry.carry);
@@ -3140,7 +3199,7 @@
         const { carry, appointment, attendance, orders, gmv } = forecastFlowValues(row, "total");
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("") : `<div class="sub">暂无可预测渠道；缺失、冲突、待补录及未配置rate的渠道不参与预测。</div>`;
-      document.getElementById("today-forecast-note").textContent = `预测逻辑：当期预测=${plainNumber(actualCarry.carry)}×整体day1 ${pct2(rateModel.day1 * 100)}=${plainNumber(currentOrders)}单；往期预测=${plainNumber(actualCarry.carry)}×整体day2 ${pct2(rateModel.day2 * 100)} + ${plainNumber(actualCarry.carry)}×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}=${plainNumber(pastOrders)}单。渠道行按各渠道承接人数×各渠道day1 rate独立四舍五入预测；按${ORDER_UNIT_PRICE}元/单折算GMV。`;
+      document.getElementById("today-forecast-note").textContent = `预测逻辑：当期预测=下方各渠道预计订单数合计=${plainNumber(currentOrders)}单；往期预测=${plainNumber(actualCarry.carry)}×整体day2 ${pct2(rateModel.day2 * 100)} + ${plainNumber(actualCarry.carry)}×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}=${plainNumber(pastOrders)}单。渠道行按各渠道承接人数×各渠道day1 rate独立四舍五入预测；按${ORDER_UNIT_PRICE}元/单折算GMV。`;
     }
 
     function reviewSceneMetric(metric, scene, side, channelName) {
@@ -3246,9 +3305,41 @@
         return mode === "current" ? addTime >= anchor && addTime <= carryEnd : addTime < anchor;
       });
     }
-    function reviewCurrentCarry(targetDate) {
-      const anchor = reviewAnchorDate(targetDate);
-      return actualCarryForUsers(cohortCarryUsers(anchor, "current"), anchor);
+    function carryUserRecordKey(user) {
+      return [text(user.unionid), text(user.owner), formatDate(dateOnly(user.addTime)), text(user.channel)].join("|");
+    }
+    function carryDatesArray(targetDates) {
+      return (Array.isArray(targetDates) ? targetDates : [targetDates]).map(dateOnly).filter(Boolean).sort((a, b) => a - b);
+    }
+    function cohortCarryUsersForDates(targetDates, mode = "current") {
+      const dates = carryDatesArray(targetDates);
+      if (!dates.length) return [];
+      if (mode === "past") {
+        const anchors = dates.map(reviewAnchorDate).filter(Boolean).sort((a, b) => a - b);
+        const earliestAnchor = anchors[0];
+        const currentKeys = new Set(cohortCarryUsersForDates(dates, "current").map(carryUserRecordKey));
+        return state.carry.filter(user => {
+          if (!user.unionid || !user.addTime) return false;
+          const addTime = dateOnly(user.addTime);
+          return addTime < earliestAnchor && !currentKeys.has(carryUserRecordKey(user));
+        });
+      }
+      const seen = new Set();
+      const users = [];
+      dates.forEach(date => {
+        cohortCarryUsers(date, "current").forEach(user => {
+          const key = carryUserRecordKey(user);
+          if (seen.has(key)) return;
+          seen.add(key);
+          users.push(user);
+        });
+      });
+      return users;
+    }
+    function reviewCurrentCarry(targetDates) {
+      const dates = carryDatesArray(targetDates);
+      const target = dates[0] || null;
+      return actualCarryForUsers(cohortCarryUsersForDates(dates, "current"), target);
     }
     function emptyReviewMetric(name) {
       return { name, carry: 0, orders: 0, gmv: 0, live: 0, chase: 0, liveOrders: 0, chaseOrders: 0, attendance: 0, appointments: 0, conversion: 0, orderNos: [], liveOrderNos: [], chaseOrderNos: [] };
@@ -3279,10 +3370,11 @@
       }
     }
     function reviewWindowActuals(carryDate, conversionDate = carryDate) {
-      const anchor = reviewAnchorDate(carryDate);
+      const carryDates = carryDatesArray(carryDate);
+      const anchor = carryDates.map(reviewAnchorDate).filter(Boolean).sort((a, b) => a - b)[0] || null;
       const window = businessDayWindow(conversionDate, 3);
-      const currentUsers = cohortCarryUsers(carryDate, "current");
-      const pastUsers = cohortCarryUsers(carryDate, "past");
+      const currentUsers = cohortCarryUsersForDates(carryDates, "current");
+      const pastUsers = cohortCarryUsersForDates(carryDates, "past");
       const currentIds = new Set(currentUsers.map(user => user.unionid));
       const pastIds = new Set(pastUsers.map(user => user.unionid).filter(id => !currentIds.has(id)));
       const currentMeta = new Map(currentUsers.map(user => [user.unionid, user]));
@@ -3438,18 +3530,19 @@
     }
 
     function renderReview() {
-      const { carryDate, conversionDate } = renderReviewDateSelectors();
-      const forecast = forecastForDate(carryDate, conversionDate);
-      const windowActuals = reviewWindowActuals(carryDate, conversionDate);
+      const { carryDates, conversionDate } = renderReviewDateSelectors();
+      const forecast = forecastForDate(carryDates, conversionDate);
+      const windowActuals = reviewWindowActuals(carryDates, conversionDate);
       const reviewCarry = forecast.actualCarry;
-      const currentPrediction = reviewCurrentPrediction(carryDate, conversionDate, forecast, reviewCarry);
+      const currentPrediction = reviewCurrentPrediction(carryDates, conversionDate, forecast, reviewCarry);
       const currentActual = windowActuals.current;
       const pastPrediction = { total: compactMetric({ name: "往期预测", carry: reviewCarry.carry, orders: forecast.pastOrders, gmv: forecast.pastGmv, live: 0, chase: forecast.pastGmv, liveOrders: 0, chaseOrders: forecast.pastOrders, conversion: forecast.pastOrders }) };
       const pastActual = windowActuals.past;
       const actualTotal = compactMetric(windowActuals.total.total);
+      const carryLabel = forecast.carryLabel;
       const prediction = {
-        key: `${formatDate(carryDate)}:${formatDate(conversionDate)}`,
-        label: `${formatDate(carryDate)} / ${formatDate(conversionDate)}`,
+        key: `${carryLabel}:${formatDate(conversionDate)}`,
+        label: `${carryLabel} / ${formatDate(conversionDate)}`,
         date: conversionDate,
         carry: reviewCarry.carry,
         orders: forecast.totalOrders,
@@ -3461,7 +3554,7 @@
       };
       const day1 = windowActuals.window.days[0] || conversionDate;
       const windowDays = windowActuals.window.days.map((date, index) => `day${index + 1} ${formatDate(date)}`).join("、");
-      document.getElementById("review-date").textContent = `承接 ${formatDate(carryDate)} / 转化 ${formatDate(day1)}`;
+      document.getElementById("review-date").textContent = `承接 ${carryLabel} / 转化 ${formatDate(day1)}`;
       document.getElementById("review-predicted-gmv").textContent = exactCurrency(prediction.gmv);
       document.getElementById("review-predicted-up").textContent = currency(prediction.up);
       document.getElementById("review-predicted-carry").textContent = plainNumber(prediction.carry);
@@ -3487,9 +3580,9 @@
       document.getElementById("review-actual-funnel").innerHTML = renderReviewFunnel({ touch: 0, reply: 0, inquiry: 0, orders: pastActual.total.orders });
       const gap = actualTotal.gmv - prediction.gmv;
       const completion = prediction.gmv ? actualTotal.gmv / prediction.gmv * 100 : 0;
-      const carryEnd = reviewWeekendCarryEnd(windowActuals.anchor);
-      const anchorNote = sameDate(carryDate, windowActuals.anchor) ? formatDate(windowActuals.anchor) : `${formatDate(carryDate)}归并至${formatDate(windowActuals.anchor)}`;
-      document.getElementById("review-conclusion").textContent = `承接日期${formatDate(carryDate)}，转化窗口${windowDays}；预测GMV ${exactCurrency(prediction.gmv)}，实际GMV ${exactCurrency(actualTotal.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。当期承接池按 ${anchorNote} 统计，若归属日为周五则包含 ${formatDate(windowActuals.anchor)} ~ ${formatDate(carryEnd)} 的周末承接。`;
+      const anchorKeys = [...new Set(carryDates.map(reviewAnchorDate).map(formatDate).filter(Boolean))];
+      const anchorNote = anchorKeys.length <= 3 ? anchorKeys.join("、") : `${anchorKeys[0]} ~ ${anchorKeys[anchorKeys.length - 1]}（${anchorKeys.length}个归属日）`;
+      document.getElementById("review-conclusion").textContent = `承接日期${carryLabel}，转化窗口${windowDays}；预测GMV ${exactCurrency(prediction.gmv)}，实际GMV ${exactCurrency(actualTotal.gmv)}，达成${percent(completion)}，偏差${gap >= 0 ? "+" : "-"}${exactCurrency(Math.abs(gap))}。当期承接池按归属日 ${anchorNote} 统计，多选日期会合并承接用户并去重；周五归属日会自动包含对应周末承接。`;
     }
 
     function coreOwnerWeeklyGmv(current) {

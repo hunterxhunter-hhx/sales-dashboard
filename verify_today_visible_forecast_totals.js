@@ -45,9 +45,9 @@ normalizePayload(payload);
 normalizeForecastDetails(forecastDetails);
 renderToday();
 
-const carryDate = dateFromKey(state.selectedTodayCarryDate, todayCarryFallbackDate());
+const carryDates = datesFromKeys(state.selectedTodayCarryDates, todayCarryFallbackDate());
 const conversionDate = dateFromKey(state.selectedTodayConversionDate, todayConversionFallbackDate());
-const forecast = forecastForDate(carryDate, conversionDate);
+const forecast = forecastForDate(carryDates, conversionDate);
 const parseOrders = id => Number(String(document.getElementById(id).textContent || "").match(/\\d+/)?.[0] || 0);
 const currentOrders = parseOrders("today-live-predicted-gmv");
 const pastOrders = parseOrders("today-chase-predicted-gmv");
@@ -66,6 +66,10 @@ if (saturdayLabels !== "2026-08-10,2026-08-11,2026-08-12") {
 }
 
 const channelRows = forecast.currentRows || [];
+const channelOrders = channelRows.reduce((sum, row) => sum + row.orders, 0);
+if (forecast.currentOrders !== channelOrders) {
+  throw new Error("Current forecast must equal channel order sum: current=" + forecast.currentOrders + ", channelSum=" + channelOrders);
+}
 for (const row of channelRows) {
   const rates = dayRateForChannel(row.name);
   if (!rates) throw new Error(\`Forecast row without channel rate: \${row.name}\`);
@@ -75,8 +79,22 @@ for (const row of channelRows) {
   }
 }
 
+const carryKeys = carryDateKeys();
+if (carryKeys.length >= 2) {
+  const selectedCarryDates = carryKeys.slice(-2).map(key => dateFromKey(key));
+  const combinedForecast = forecastForDate(selectedCarryDates, conversionDate);
+  const expectedCarry = cohortCarryUsersForDates(selectedCarryDates, "current").length;
+  const combinedChannelOrders = (combinedForecast.currentRows || []).reduce((sum, row) => sum + row.orders, 0);
+  if (combinedForecast.actualCarry.carry !== expectedCarry) {
+    throw new Error("Multi-date carry mismatch: forecast=" + combinedForecast.actualCarry.carry + ", expected=" + expectedCarry);
+  }
+  if (combinedForecast.currentOrders !== combinedChannelOrders) {
+    throw new Error("Multi-date current forecast mismatch: current=" + combinedForecast.currentOrders + ", channelSum=" + combinedChannelOrders);
+  }
+}
+
 console.log(JSON.stringify({
-  carryDate: formatDate(carryDate),
+  carryDate: carryDateLabel(carryDates),
   conversionDate: formatDate(conversionDate),
   currentOrders,
   pastOrders,

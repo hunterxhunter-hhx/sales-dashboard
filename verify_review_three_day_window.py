@@ -50,7 +50,7 @@ assert "window.days.some(day => sameDate(orderDate, day))" in html
 assert "function userKeyForOrder(order)" in html
 assert "text(order.wxid || order.userId)" in html
 assert "const window = businessDayWindow(conversionDate, 3)" in html
-assert "const currentUsers = cohortCarryUsers(carryDate, \"current\")" in html
-assert "const pastUsers = cohortCarryUsers(carryDate, \"past\")" in html
+assert "const currentUsers = cohortCarryUsersForDates(carryDates, \"current\")" in html
+assert "const pastUsers = cohortCarryUsersForDates(carryDates, \"past\")" in html
 
 print("review workday window compatibility checks passed")

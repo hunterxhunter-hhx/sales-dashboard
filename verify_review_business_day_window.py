@@ -29,6 +29,7 @@ required_functions = [
     "businessDayWindow",
     "reviewWeekendCarryEnd",
     "cohortCarryUsers",
+    "cohortCarryUsersForDates",
     "actualCarryForUsers",
     "reviewCurrentCarry",
     "reviewWindowActuals",
@@ -57,10 +58,11 @@ assert "addTime < anchor" in cohort
 
 actuals = function_body("reviewWindowActuals")
 assert "function reviewWindowActuals(carryDate, conversionDate = carryDate)" in html
-assert "const anchor = reviewAnchorDate(carryDate)" in actuals
+assert "const carryDates = carryDatesArray(carryDate)" in actuals
+assert "const anchor = carryDates.map(reviewAnchorDate)" in actuals
 assert "const window = businessDayWindow(conversionDate, 3)" in actuals
-assert 'cohortCarryUsers(carryDate, "current")' in actuals
-assert 'cohortCarryUsers(carryDate, "past")' in actuals
+assert 'cohortCarryUsersForDates(carryDates, "current")' in actuals
+assert 'cohortCarryUsersForDates(carryDates, "past")' in actuals
 
 render_today = function_body("renderToday")
 render_review = function_body("renderReview")

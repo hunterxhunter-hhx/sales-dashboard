@@ -25,6 +25,12 @@ def function_body(name: str) -> str:
 today_section = html[html.index('data-page="today"'):html.index('data-page="review"')]
 review_section = html[html.index('data-page="review"'):html.index('data-page="weekly"')]
 
+assert re.search(r'<select id="today-date-selector"[^>]*multiple', today_section), "today carry date selector must be multiple"
+assert re.search(r'<select id="review-date-selector"[^>]*multiple', review_section), "review carry date selector must be multiple"
+assert "selectedTodayCarryDates" in html
+assert "selectedReviewCarryDates" in html
+assert "function setMultiDateSelector(" in html
+
 required = [
     'id="today-date-selector"',
     'id="today-conversion-date-selector"',
@@ -76,9 +82,9 @@ for forbidden in [
 assert "forecastFlowValues(row, \"total\")" in render_today
 assert "renderCurrentPastSummary(" in render_today
 assert "businessDayWindow(conversionDate, 3)" in render_today
-assert "forecastForDate(carryDate, conversionDate)" in render_review
-assert "reviewWindowActuals(carryDate, conversionDate)" in render_review
-assert "reviewCurrentPrediction(carryDate, conversionDate, forecast, reviewCarry)" in render_review
+assert "forecastForDate(carryDates, conversionDate)" in render_review
+assert "reviewWindowActuals(carryDates, conversionDate)" in render_review
+assert "reviewCurrentPrediction(carryDates, conversionDate, forecast, reviewCarry)" in render_review
 assert "expectedOrders = row.carry * number(rates.day1)" in channel_forecast
 
 print("today prediction model verification passed")
