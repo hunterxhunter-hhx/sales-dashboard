@@ -48,8 +48,10 @@ for token in [
 ]:
     assert token in forecast_totals, f"forecastRateTotals missing {token}"
 
-assert "pastBase = carry + PAST_AVERAGE_ORDER_COUNT" in forecast_totals
-assert "number(overall.day2) + number(overall.day3)" in forecast_totals
+assert "pastExpected = carry * number(overall.day2) + carry * number(overall.day3) + PAST_AVERAGE_ORDER_COUNT" in forecast_totals
+assert "pastBase = carry + PAST_AVERAGE_ORDER_COUNT" not in forecast_totals
+assert "carry * number(overall.day2)" in forecast_totals
+assert "carry * number(overall.day3)" in forecast_totals
 assert "expectedOrders = row.carry * number(rates.day1)" in channel_forecast
 assert "orders = Math.max(0, Math.round(expectedOrders))" in channel_forecast
 assert "gmv = orders * ORDER_UNIT_PRICE" in channel_forecast

@@ -3001,8 +3001,7 @@
       const carry = number(actualCarry.carry);
       const overall = dayRateForOverall();
       const currentExpected = carry * number(overall.day1);
-      const pastBase = carry + PAST_AVERAGE_ORDER_COUNT;
-      const pastExpected = pastBase * (number(overall.day2) + number(overall.day3));
+      const pastExpected = carry * number(overall.day2) + carry * number(overall.day3) + PAST_AVERAGE_ORDER_COUNT;
       const currentOrders = Math.max(0, Math.round(currentExpected));
       const pastOrders = Math.max(0, Math.round(pastExpected));
       const totalOrders = currentOrders + pastOrders;
@@ -3123,7 +3122,7 @@
       document.getElementById("today-month-gmv").textContent = currency(month.gmv);
       document.getElementById("today-forecast-date").textContent = `承接 ${formatDate(carryDate)} / 转化 ${formatDate(day1)}`;
       document.getElementById("today-source-date-note").textContent = `承接日期 ${formatDate(carryDate)}；转化日期 ${formatDate(conversionDate)} 起算，按工作日窗口：${windowLabel}。`;
-      document.getElementById("today-source-summary").textContent = `${formatDate(carryDate)} 应销转 ${plainNumber(actualCarry.carry)} 人；当期=应销转×整体day1 ${pct2(rateModel.day1 * 100)}，往期=(应销转+${PAST_AVERAGE_ORDER_COUNT})×整体day2/day3 ${pct2((rateModel.day2 + rateModel.day3) * 100)}。`;
+      document.getElementById("today-source-summary").textContent = `${formatDate(carryDate)} 应销转 ${plainNumber(actualCarry.carry)} 人；当期=应销转×整体day1 ${pct2(rateModel.day1 * 100)}，往期=应销转×整体day2 ${pct2(rateModel.day2 * 100)} + 应销转×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}。`;
       document.getElementById("today-workday").textContent = workdayStatus(day1);
       document.getElementById("today-predicted-up").textContent = currency(predictedUp);
       document.getElementById("today-predicted-carry").textContent = plainNumber(actualCarry.carry);
@@ -3141,7 +3140,7 @@
         const { carry, appointment, attendance, orders, gmv } = forecastFlowValues(row, "total");
         return `<div class="flow"><div class="flow-head"><strong>${shortChannel(row.name)}</strong><span>预计订单 ${plainNumber(orders)} 单 · GMV ${exactCurrency(gmv)}</span></div><div class="flow-steps"><div class="flow-step">应销转<strong>${plainNumber(carry)}</strong></div><div class="flow-step">预约<strong>${plainNumber(appointment)}</strong></div><div class="flow-step">到课<strong>${plainNumber(attendance)}</strong></div><div class="flow-step">预计订单<strong>${plainNumber(orders)}</strong></div></div></div>`;
       }).join("") : `<div class="sub">暂无可预测渠道；缺失、冲突、待补录及未配置rate的渠道不参与预测。</div>`;
-      document.getElementById("today-forecast-note").textContent = `预测逻辑：当期预测=${plainNumber(actualCarry.carry)}×整体day1 ${pct2(rateModel.day1 * 100)}=${plainNumber(currentOrders)}单；往期预测=(${plainNumber(actualCarry.carry)}+${PAST_AVERAGE_ORDER_COUNT})×整体(day2+day3) ${pct2((rateModel.day2 + rateModel.day3) * 100)}=${plainNumber(pastOrders)}单。渠道行按各渠道承接人数×各渠道day1 rate独立四舍五入预测；按${ORDER_UNIT_PRICE}元/单折算GMV。`;
+      document.getElementById("today-forecast-note").textContent = `预测逻辑：当期预测=${plainNumber(actualCarry.carry)}×整体day1 ${pct2(rateModel.day1 * 100)}=${plainNumber(currentOrders)}单；往期预测=${plainNumber(actualCarry.carry)}×整体day2 ${pct2(rateModel.day2 * 100)} + ${plainNumber(actualCarry.carry)}×整体day3 ${pct2(rateModel.day3 * 100)} + 往期平均值${PAST_AVERAGE_ORDER_COUNT}=${plainNumber(pastOrders)}单。渠道行按各渠道承接人数×各渠道day1 rate独立四舍五入预测；按${ORDER_UNIT_PRICE}元/单折算GMV。`;
     }
 
     function reviewSceneMetric(metric, scene, side, channelName) {
