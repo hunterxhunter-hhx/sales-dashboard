@@ -1564,6 +1564,10 @@
       if (pending || !owner || owner.includes("待补录") || owner.includes("缺失")) return "待补录";
       return CORE_OWNERS.find(name => owner === name || owner.includes(name)) || "激活组";
     }
+    function isExcludedRefundMethod(value) {
+      const method = text(value);
+      return ["部分退", "全额退", "部分退款", "全额退款"].some(item => method.includes(item));
+    }
 
     function orderScope(order) {
       if (order.attribution_type === "pending") return "往期用户候选";
@@ -1584,8 +1588,17 @@
       state.orders = (payload.orders || []).map(row => {
         const pending = text(row.attribution_type) === "pending";
         const rowChannel = text(row.channel);
+        const manualChannel = text(row.manual_remark_channel);
+        const manualOwner = text(row.manual_remark_owner);
         const paid = number(row.paid_amount);
         const refund = number(row.refund_amount);
+        const refundMethod = text(row.refund_method);
+        const excludedRefund = isExcludedRefundMethod(refundMethod);
+        const reportGmv = row.report_gmv == null ? (excludedRefund ? 0 : number(row.net_sales)) : number(row.report_gmv);
+        const ownerValue = pending && manualOwner ? manualOwner : row.owner_name;
+        const channelValue = pending && (!rowChannel || rowChannel === "待归因")
+          ? (manualChannel || "待补录")
+          : (rowChannel || "待补录");
         return {
           id: text(row.order_id || row.order_no),
           orderNo: text(row.order_no || row.order_id),
@@ -1595,15 +1608,16 @@
           addTime: parseDate(row.add_time),
           paid,
           refund,
-          gmv: number(row.net_sales),
+          refundMethod,
+          gmv: reportGmv,
           status: text(row.order_status),
           product: text(row.product_name),
           scenario: text(row.scenario) || (text(row.product_name).includes("直播") ? "直播间转化" : "追单转化"),
-          owner: normalizeOwnerGroup(row.owner_name, pending),
-          channel: pending && (!rowChannel || rowChannel === "待归因") ? "待补录" : (rowChannel || "待补录"),
+          owner: normalizeOwnerGroup(ownerValue, pending && !manualOwner),
+          channel: channelValue,
           attribution_type: text(row.attribution_type),
           scope: orderScope(row),
-          effective: refund < paid
+          effective: refund < paid && !excludedRefund
         };
       });
       buildPeriods();
@@ -3925,9 +3939,11 @@
       const safeIndex = currentIndex >= 0 ? currentIndex : rows.length - 1;
       const prev = safeIndex > 0 ? rows[safeIndex - 1] : null;
       const weekHistoryRows = weekWindowRows(current);
+      const currentMonth = latest("month");
       document.getElementById("week-title").textContent = `${current.label}经营周报`;
       document.getElementById("week-kpis").innerHTML = [
         statCard("本周GMV", currency(current.gmv), `较上周 ${changeText(current.gmv, prev?.gmv || 0)}`, changeClass(current.gmv, prev?.gmv || 0)),
+        statCard("本月GMV", currency(currentMonth.gmv), "本月1号截至至今"),
         statCard("本周UP", currency(current.up), `较上周 ${changeText(current.up, prev?.up || 0)}`, changeClass(current.up, prev?.up || 0)),
         statCard("承接人数", plainNumber(current.carry), `转化 ${plainNumber(current.conversion)} 人`),
         statCard("本周人均产值", currency(coreOwnerWeeklyGmv(current)), "核心8人订单GMV / 8")

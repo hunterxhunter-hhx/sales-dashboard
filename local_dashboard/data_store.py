@@ -33,6 +33,7 @@ CHANNEL_RULES = [
 ]
 
 MISSING_CHANNELS = {"", "缺失渠道", "待归因", "待补录"}
+EXCLUDED_REFUND_METHODS = {"部分退", "全额退", "部分退款", "全额退款"}
 
 SOURCE_FILE_SPECS = [
     ("carry", "用户承接表.xlsx"),
@@ -41,6 +42,7 @@ SOURCE_FILE_SPECS = [
 
 FORECAST_DETAIL_FILENAME = "明细表.xlsx"
 CHANNEL_CLASSIFICATION_VERSION = 2
+ORDER_IMPORT_VERSION = 2
 YOUZAN_FILENAME = "有赞数据.xlsx"
 
 
@@ -148,6 +150,11 @@ def apply_manual_remark_channel(channel: Any, manual_remark: Any) -> str:
     return safe_text(manual_remark) or value
 
 
+def is_excluded_refund_method(value: Any) -> bool:
+    text = safe_text(value)
+    return any(method in text for method in EXCLUDED_REFUND_METHODS)
+
+
 def is_activation_promoter(value: Any) -> bool:
     return safe_text(value) == "常丁健"
 
@@ -204,10 +211,14 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
     order_time = parse_datetime(pick(row, ["支付时间", "下单时间", "付款时间"]))
     paid_amount = to_float(pick(row, ["实付金额", "支付金额", "订单实付金额"]))
     refund_amount = to_float(pick(row, ["退款金额", "售后退款金额"]))
+    refund_method = safe_text(pick(row, ["退款方式", "退款类型", "售后退款方式"]))
     product_name = safe_text(pick(row, ["商品名称", "课程名称"]))
     promoter = safe_text(pick(row, ["推广员"]))
     promoter_modified = safe_text(pick(row, ["推广员（修改后）", "推广员(修改后)", "推广员修改后"]))
     manual_remark = safe_text(pick(row, ["手动备注"]))
+    manual_remark_channel = safe_text(pick(row, ["手动备注渠道 l列", "手动备注渠道 L列", "手动备注渠道"]))
+    manual_remark_owner = safe_text(pick(row, ["手动备注销售", "手动备注销售 "]))
+    net_sales = max(paid_amount - refund_amount, 0.0)
     return {
         "order_id": order_id or order_no,
         "order_no": order_no,
@@ -216,13 +227,17 @@ def normalize_order_row(row: dict[str, Any]) -> dict[str, Any]:
         "order_time": order_time,
         "paid_amount": paid_amount,
         "refund_amount": refund_amount,
-        "net_sales": max(paid_amount - refund_amount, 0.0),
+        "refund_method": refund_method,
+        "net_sales": net_sales,
+        "report_gmv": 0.0 if is_excluded_refund_method(refund_method) else net_sales,
         "order_status": safe_text(pick(row, ["订单状态"])),
         "product_name": product_name,
         "scenario": classify_scenario(product_name),
         "promoter": promoter,
         "promoter_modified": promoter_modified,
         "manual_remark": manual_remark,
+        "manual_remark_channel": manual_remark_channel,
+        "manual_remark_owner": manual_remark_owner,
         "raw_json": json.dumps(row, ensure_ascii=False, default=str),
     }
 
@@ -292,13 +307,17 @@ class DashboardStore:
                     order_time TEXT,
                     paid_amount REAL NOT NULL DEFAULT 0,
                     refund_amount REAL NOT NULL DEFAULT 0,
+                    refund_method TEXT,
                     net_sales REAL NOT NULL DEFAULT 0,
+                    report_gmv REAL NOT NULL DEFAULT 0,
                     order_status TEXT,
                     product_name TEXT,
                     scenario TEXT,
                     promoter TEXT,
                     promoter_modified TEXT,
                     manual_remark TEXT,
+                    manual_remark_channel TEXT,
+                    manual_remark_owner TEXT,
                     raw_json TEXT,
                     batch_id INTEGER,
                     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -338,6 +357,10 @@ class DashboardStore:
             self._ensure_column(conn, "order_records", "promoter", "TEXT")
             self._ensure_column(conn, "order_records", "promoter_modified", "TEXT")
             self._ensure_column(conn, "order_records", "manual_remark", "TEXT")
+            self._ensure_column(conn, "order_records", "manual_remark_channel", "TEXT")
+            self._ensure_column(conn, "order_records", "manual_remark_owner", "TEXT")
+            self._ensure_column(conn, "order_records", "refund_method", "TEXT")
+            self._ensure_column(conn, "order_records", "report_gmv", "REAL NOT NULL DEFAULT 0")
 
     def _ensure_column(self, conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
         columns = {row["name"] for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
@@ -595,6 +618,8 @@ class DashboardStore:
         if not tracked:
             return False
         last_result = json.loads(tracked["last_result_json"] or "{}")
+        if int(last_result.get("order_import_version") or 0) != ORDER_IMPORT_VERSION:
+            return False
         source_rows_seen = last_result.get("rows_seen")
         if source_rows_seen is None:
             return True
@@ -801,10 +826,11 @@ class DashboardStore:
                     """
                     INSERT INTO order_records(
                         order_id, order_no, wxid, user_id, order_time, paid_amount,
-                        refund_amount, net_sales, order_status, product_name, scenario,
-                        promoter, promoter_modified, manual_remark, raw_json, batch_id
+                        refund_amount, refund_method, net_sales, report_gmv, order_status, product_name, scenario,
+                        promoter, promoter_modified, manual_remark, manual_remark_channel, manual_remark_owner,
+                        raw_json, batch_id
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(order_id) DO UPDATE SET
                         order_no = excluded.order_no,
                         wxid = excluded.wxid,
@@ -812,13 +838,17 @@ class DashboardStore:
                         order_time = excluded.order_time,
                         paid_amount = excluded.paid_amount,
                         refund_amount = excluded.refund_amount,
+                        refund_method = excluded.refund_method,
                         net_sales = excluded.net_sales,
+                        report_gmv = excluded.report_gmv,
                         order_status = excluded.order_status,
                         product_name = excluded.product_name,
                         scenario = excluded.scenario,
                         promoter = excluded.promoter,
                         promoter_modified = excluded.promoter_modified,
                         manual_remark = excluded.manual_remark,
+                        manual_remark_channel = excluded.manual_remark_channel,
+                        manual_remark_owner = excluded.manual_remark_owner,
                         raw_json = excluded.raw_json,
                         batch_id = excluded.batch_id,
                         updated_at = CURRENT_TIMESTAMP
@@ -831,13 +861,17 @@ class DashboardStore:
                         item["order_time"],
                         item["paid_amount"],
                         item["refund_amount"],
+                        item["refund_method"],
                         item["net_sales"],
+                        item["report_gmv"],
                         item["order_status"],
                         item["product_name"],
                         item["scenario"],
                         item["promoter"],
                         item["promoter_modified"],
                         item["manual_remark"],
+                        item["manual_remark_channel"],
+                        item["manual_remark_owner"],
                         item["raw_json"],
                         batch_id,
                     ),
@@ -848,6 +882,7 @@ class DashboardStore:
                     result["inserted"] += 1
             self._finish_batch(conn, batch_id, result)
         self.recompute_attributions()
+        result["order_import_version"] = ORDER_IMPORT_VERSION
         return result
 
     def replace_order_rows(self, rows, filename: str) -> dict[str, int]:
@@ -924,12 +959,14 @@ class DashboardStore:
                             "reason": "待补录订单推广员（修改后）=常丁健",
                         }
                     else:
+                        manual_channel = order["manual_remark_channel"] or order["manual_remark"]
+                        manual_owner = safe_text(order["manual_remark_owner"])
                         attribution = {
                             "union_id": order["wxid"],
                             "carry_record_id": None,
                             "employee_user_id": "",
-                            "owner_name": "待归因",
-                            "channel": apply_manual_remark_channel("待归因", order["manual_remark"]),
+                            "owner_name": manual_owner or "待归因",
+                            "channel": apply_manual_remark_channel("待归因", manual_channel),
                             "attribution_type": "pending",
                             "reason": "未找到订单时间之前的承接记录",
                         }
@@ -967,7 +1004,7 @@ class DashboardStore:
             carry_records = conn.execute("SELECT COUNT(*) AS count FROM carry_records").fetchone()["count"]
             unique_users = conn.execute("SELECT COUNT(DISTINCT union_id) AS count FROM carry_records").fetchone()["count"]
             orders = conn.execute("SELECT COUNT(*) AS count FROM order_records").fetchone()["count"]
-            sales = conn.execute("SELECT COALESCE(SUM(net_sales), 0) AS total FROM order_records").fetchone()["total"]
+            sales = conn.execute("SELECT COALESCE(SUM(report_gmv), 0) AS total FROM order_records").fetchone()["total"]
             refunds = conn.execute("SELECT COALESCE(SUM(refund_amount), 0) AS total FROM order_records").fetchone()["total"]
             pending = conn.execute(
                 "SELECT COUNT(*) AS count FROM order_attributions WHERE attribution_type = 'pending'"
@@ -980,6 +1017,7 @@ class DashboardStore:
                 SELECT COUNT(DISTINCT o.wxid) AS count
                 FROM order_records o
                 WHERE o.refund_amount < o.paid_amount
+                  AND COALESCE(o.report_gmv, 0) > 0
                 """
             ).fetchone()["count"]
             return {
@@ -1022,8 +1060,8 @@ class DashboardStore:
                 SELECT
                     COALESCE(a.owner_name, '待归因') AS owner_name,
                     COUNT(o.order_id) AS orders,
-                    COALESCE(SUM(o.net_sales), 0) AS sales,
-                    COUNT(DISTINCT CASE WHEN o.refund_amount < o.paid_amount THEN o.wxid END) AS conversion_users
+                    COALESCE(SUM(o.report_gmv), 0) AS sales,
+                    COUNT(DISTINCT CASE WHEN o.refund_amount < o.paid_amount AND COALESCE(o.report_gmv, 0) > 0 THEN o.wxid END) AS conversion_users
                 FROM order_records o
                 LEFT JOIN order_attributions a ON a.order_id = o.order_id
                 GROUP BY COALESCE(a.owner_name, '待归因')
@@ -1056,10 +1094,14 @@ class DashboardStore:
                     o.order_time,
                     o.paid_amount,
                     o.refund_amount,
+                    o.refund_method,
                     o.net_sales,
+                    o.report_gmv,
                     o.order_status,
                     o.product_name,
                     o.scenario,
+                    o.manual_remark_channel,
+                    o.manual_remark_owner,
                     COALESCE(a.employee_user_id, '') AS employee_user_id,
                     COALESCE(a.owner_name, '待归因') AS owner_name,
                     COALESCE(a.channel, '待归因') AS channel,
