@@ -384,11 +384,18 @@ class DashboardStore:
         from .excel_io import iter_xlsx_rows
 
         source_dir = Path(source_dir) if source_dir else self.source_dir()
-        path = None
-        for candidate in source_dir.iterdir():
-            if candidate.is_file() and candidate.suffix.lower() == ".xlsx" and "有赞" in candidate.name:
-                path = candidate
-                break
+        path = source_dir / YOUZAN_FILENAME
+        if not path.exists():
+            path = None
+            for candidate in source_dir.iterdir():
+                if (
+                    candidate.is_file()
+                    and candidate.suffix.lower() == ".xlsx"
+                    and not candidate.name.startswith("~$")
+                    and "有赞" in candidate.name
+                ):
+                    path = candidate
+                    break
         if path is None or not path.exists():
             return {"available": False, "sheets": {}, "cards": {}, "charts": {}}
 
@@ -419,6 +426,17 @@ class DashboardStore:
             parsed = parse_datetime(text)
             return parsed[:7] if re.match(r"^\d{4}-\d{2}", parsed) else text
 
+        def safe_day(value: Any) -> str:
+            if isinstance(value, (datetime, int, float)):
+                return excel_serial_date(value)
+            text = safe_text(value)
+            if re.fullmatch(r"\d+(?:\.\d+)?", text):
+                serial = float(text)
+                if 20000 <= serial <= 80000:
+                    return excel_serial_date(serial)
+            parsed = parse_datetime(text)
+            return parsed[:10] if parsed else ""
+
         workbook_rows = {}
         try:
             from openpyxl import load_workbook
@@ -446,9 +464,16 @@ class DashboardStore:
         except Exception:
             workbook_rows = {sheet_name: list(iter_xlsx_rows(path, sheet_name)) for sheet_name in ["CRM导出订单-6", "订单表-6", "月毛利-6"]}
 
-        crm_rows = workbook_rows.get("CRM导出订单-6", [])
-        order_rows = workbook_rows.get("订单表-6", [])
-        month_rows = workbook_rows.get("月毛利-6", [])
+        def rows_for_sheet(*names: str) -> list[dict[str, Any]]:
+            for name in names:
+                rows = workbook_rows.get(name)
+                if rows is not None:
+                    return rows
+            return []
+
+        crm_rows = rows_for_sheet("CRM导出订单-6")
+        order_rows = rows_for_sheet("订单表-6", "有赞订单表-6")
+        month_rows = rows_for_sheet("月毛利-6")
 
         month_entries = []
         for row in month_rows:
@@ -490,9 +515,9 @@ class DashboardStore:
             type_profit[product_type] += profit
 
         for row in order_rows:
-            day = safe_text(pick(row, ["付款日期"]))
+            day = safe_day(pick(row, ["付款日期"]))
             if not day:
-                day = parse_datetime(pick(row, ["付款时间"]))[:10]
+                day = safe_day(pick(row, ["付款时间"]))
             if not day:
                 continue
             bucket = daily[day]
